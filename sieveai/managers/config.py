@@ -4,13 +4,28 @@ from .base import ManagerBase
 class ConfigManager(ManagerBase):
   settings = ObjDict()
   def __init__(self, *args, **kwargs):
-    self.__set_defaults()
     super().__init__(**kwargs)
-  
+    self.__set_defaults()
+    self.__process_config()
+
+  def __process_config(self):
+    if self.settings.base.path_receptors is None:
+      self.settings.base.path_receptors = self.get_path(self.settings.base.dir_receptors)
+
+    if self.settings.base.path_ligands is None:
+      self.settings.base.path_ligands = self.get_path(self.settings.base.dir_ligands)
+
+    if self.settings.base.path_docking is None:
+      self.settings.base.path_docking = self.get_path(self.settings.base.dir_docking)
+
+    if self.settings.base.path_analysis is None:
+      self.settings.base.path_analysis = self.get_path(self.settings.base.dir_analysis)
+
+    if self.settings.base.path_results is None:
+      self.settings.base.path_results = self.get_path(self.settings.base.dir_results)
+
   def __set_defaults(self):
     _common_vars = {
-      'path_project': None,
-
       'path_base': None,
 
       'path_receptors': None,
@@ -49,4 +64,3 @@ class ConfigManager(ManagerBase):
   def _write_config(self, *args, **kwargs):
 
     ...
-

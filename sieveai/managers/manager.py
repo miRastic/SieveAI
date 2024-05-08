@@ -22,25 +22,43 @@ class Manager(ConfigManager, PluginManager):
     print("{}\n{}\n{}".format("=" * len(_version_info), _version_info, "=" * len(_version_info)))
     self.settings.base.update(_params)
 
+  def manage_exe_plugins(self, *args, **kwargs):
+    _plugin_type = args[0] if len(args) > 0 else kwargs.get("plugin_type", "docking")
+
+    if not isinstance(self.settings.exe.plugins[_plugin_type], (list)):
+      self.settings.exe.plugins[_plugin_type] = []
+
+    for _dp in self.settings.exe.programs[_plugin_type] or []:
+      self.settings.exe.plugins[_plugin_type].append(self.get_plugin(_dp))
+
   def handle_docking(self, *args, **kwargs):
     from ..core.dock import Dock
     self.settings.base.update(kwargs or {})
+
+    if self.settings.base.path_base:
+      self.path_base = self.settings.base.path_base
+
     if self.settings.base.docking_programs and len(self.settings.base.docking_programs) > 0:
       self.settings.exe.programs.docking = self.settings.base.docking_programs
 
-    for _dp in self.settings.exe.programs.docking:
-      self.settings.exe.plugins.docking.append(self.get_plugin(_dp))
-    _dock = Dock(settings=self.settings) # pass settings to Dock
+    self.manage_exe_plugins('docking')
+
+    _dock = Dock(path_base=self.path_base, settings=self.settings) # pass settings to Dock
     _dock.process()
 
   def handle_rescoring(self, *args, **kwargs):
     from ..core.rescore import Rescore
     self.settings.update(kwargs or {})
+
+    if self.settings.base.path_base:
+      self.path_base = self.settings.base.path_base
+
     if self.settings.base.rescoring_programs and len(self.settings.base.rescoring_programs) > 0:
       self.settings.exe.programs.rescoring = self.settings.base.rescoring_programs
-    for _dp in self.settings.exe.programs.rescoring:
-      self.settings.exe.plugins.rescoring.append(self.get_plugin(_dp))
-    _rescore = Rescore(settings=self.settings)
+
+    self.manage_exe_plugins('rescoring')
+
+    _rescore = Rescore(path_base=self.path_base, settings=self.settings)
     _rescore.process()
 
   def cli_dock(self):

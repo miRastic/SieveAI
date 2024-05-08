@@ -11,12 +11,8 @@ class Dock(CoreBase):
     if self.settings.base.path_base:
       self.path_base = self.settings.base.path_base
 
-    if not self.settings.base.path_project:
-      self.settings.base.path_project = self.settings.base.path_base
-
     for _PluginClass in self.settings.exe.plugins.docking or []:
-      _plugin = _PluginClass(settings=self.settings)
-      _plugin.setup()
+      _plugin = _PluginClass(path_base=self.path_base, settings=self.settings)
       _plugin.boot()
       _plugin.run()
       _plugin.shutdown()
