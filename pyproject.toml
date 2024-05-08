@@ -5,7 +5,7 @@
 [project]
   name = "SieveAI"
   description = "SieveAI: An Automated Drug Discovery Pipeline"
-  version = "0.7.1"
+  version = "0.7.3-dev"
   authors = [
     { name="Vishal Kumar Sahu", email="mail@vishalkumarsahu.in" },
   ]
@@ -19,6 +19,7 @@
     'Programming Language :: Python :: 3.10'
   ]
   dependencies = [
+    'toml',
     'UtilityLib',
     'biopython',
     'imageio',
@@ -28,7 +29,6 @@
     'pdb-tools',
     'Pillow',
     'psutil',
-    'PyAutoGUI',
     'python3-xlib',
     'requests',
     'seaborn',

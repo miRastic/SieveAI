@@ -44,13 +44,19 @@ class ConfigManager(ManagerBase):
     }
 
     _executables = ObjDict()
-    _executables.plugins.docking = []
-    _executables.plugins.rescoring = []
+    _executables.plugins.docking = ObjDict()
+    _executables.plugins.rescoring = ObjDict()
     _executables.programs.docking = ['vina']
     _executables.programs.rescoring = []
 
     self.settings.base.update(_common_vars)
     self.settings.exe.update(_executables)
+    self.settings.plugin_data = ObjDict()
+    self.settings.molecules = ObjDict()
+    self.settings.messages = ObjDict()
+    self.settings.messages.error = ObjDict()
+    self.settings.messages.info = ObjDict()
+    self.settings.messages.warning = ObjDict()
 
   def _read_config(self, *args, **kwargs):
     _config_path = ""

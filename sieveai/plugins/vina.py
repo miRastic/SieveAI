@@ -13,9 +13,8 @@ class Vina(PluginBase):
 
   def boot(self, *args, **kwargs):
     self.setup(*args, **kwargs)
-
-    _receptors = self.MolManager.get_molecules('path_receptors', 'pdb')
-    _ligands = self.MolManager.get_molecules('path_ligands', 'pdb')
+    _receptors = self.MolManager.get_molecules('path_receptors', 'pdb', 'protein')
+    _ligands = self.MolManager.get_molecules('path_ligands', 'pdb', 'compound')
 
     print(_receptors, _ligands)
     ...
