@@ -1,47 +1,48 @@
-from UtilityLib import ObjDict, UM
 from .base import MoleculeBase
 
 class Molecule(MoleculeBase):
   def __init__(self, *args, **kwargs):
-    self.mol_id = None
+    _defaults = {
+      "mol_id": None,
 
-    self.mol_ext = None
-    self.n_models = 0
-    self.n_molecules = 0
-    self.n_atoms = 0
-    self.n_hetatoms = 0
-    self.n_residues = 0
+      "mol_ext": None,
+      "n_models": 0,
+      "n_molecules": 0,
+      "n_atoms": 0,
+      "n_hetatoms": 0,
+      "n_residues": 0,
 
-    self.db_sources = []
+      "db_sources": [],
 
-    self.is_valid = False
-    self.is_2D = False
-    self.is_3D = False
-    self.is_gz = False
-
-    self.mol_path = args[0] if len(args) > 0 else kwargs.get('mol_path')
-    self.mol_type = args[1] if len(args) > 1 else kwargs.get('mol_type')
+      "is_valid": None,
+      "is_2D": None,
+      "is_3D": None,
+      "is_gz": None,
+      "mol_path": args[0] if len(args) > 0 else kwargs.get('mol_path'),
+      "mol_type": args[1] if len(args) > 1 else kwargs.get('mol_type')
+    }
+    _defaults.update(kwargs)
+    super().__init__(*args, **_defaults)
 
     _mol_path = self.mol_path
-    if _mol_path and UM.ext(_mol_path) == 'gz':
+    if _mol_path and self.UM.ext(_mol_path) == 'gz':
       self.is_gz = True
-      _mol_path = UM.filename(_mol_path, with_dir=True)
-    
-    self.mol_id = UM.filename(_mol_path)
-    self.mol_ext = None if _mol_path is None else UM.ext(_mol_path)
-    super().__init__(**kwargs)
+      _mol_path = self.UM.filename(_mol_path, with_dir=True)
+
+    self.mol_id = self.UM.filename(_mol_path)
+    self.mol_ext = None if _mol_path is None else self.UM.ext(_mol_path)
     self.parse_pdb()
 
   def parse_pdb(self, *args, **kwargs):
     ...
 
-  def __str__(self, *args, **kwargs):
-    return self.mol_id or "Molecule: No Data"
+  # def __str__(self, *args, **kwargs):
+  #   return self.mol_id or "Molecule: No Data"
 
-  def __repr__(self, *args, **kwargs):
-    return self.mol_id or "Molecule: No Data"
+  # def __repr__(self, *args, **kwargs):
+  #   return self.mol_id or "Molecule: No Data"
 
   # File type provider
   def to_format(self, *args, **kwargs):
-    print("Not yet implemented")
-    ...
+    _to_ext = args[0] if len(args) > 0 else kwargs.get('to_ext')
+    print('to_format', args, self.mol_ext)

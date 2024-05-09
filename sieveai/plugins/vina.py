@@ -4,6 +4,8 @@ from ..managers.molecule import MoleculeManager
 
 class Vina(PluginBase):
   MolManager = None
+  Receptors = None
+  Ligands = None
   def __init__(self, *args, **kwargs):
     super().__init__(**kwargs)
     self.MolManager = MoleculeManager(**kwargs)
@@ -13,13 +15,16 @@ class Vina(PluginBase):
 
   def boot(self, *args, **kwargs):
     self.setup(*args, **kwargs)
-    _receptors = self.MolManager.get_molecules('path_receptors', 'pdb', 'protein')
-    _ligands = self.MolManager.get_molecules('path_ligands', 'pdb', 'compound')
+    self.Receptors = self.MolManager.get_molecules('path_receptors', 'pdb', 'protein')
+    self.Ligands = self.MolManager.get_molecules('path_ligands', 'pdb', 'compound')
 
-    print(_receptors, _ligands)
-    ...
+  def _prepare_receptor(self, _rec_id):
+    self.Receptors[_rec_id].to_format('pdbqt')
+
 
   def run(self, *args, **kwargs):
+    for _mol_id, _mol_obj in self.Receptors:
+      self._prepare_receptor(_mol_id)
     ...
 
   def shutdown(self, *args, **kwargs):

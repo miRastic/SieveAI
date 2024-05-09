@@ -2,5 +2,8 @@ from .molecule import Molecule
 
 class Compound(Molecule):
   def __init__(self, *args, **kwargs):
-    self.mol_type = 'compound'
-    super().__init__(**kwargs)
+    _defaults = {
+      'mol_type': 'compound'
+    }
+    _defaults.update(kwargs)
+    super().__init__(*args, **_defaults)

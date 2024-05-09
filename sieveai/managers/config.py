@@ -49,10 +49,11 @@ class ConfigManager(ManagerBase):
     _executables.programs.docking = ['vina']
     _executables.programs.rescoring = []
 
+    # Aggregators
+    self.settings.structures = []
     self.settings.base.update(_common_vars)
     self.settings.exe.update(_executables)
     self.settings.plugin_data = ObjDict()
-    self.settings.molecules = ObjDict()
     self.settings.messages = ObjDict()
     self.settings.messages.error = ObjDict()
     self.settings.messages.info = ObjDict()
