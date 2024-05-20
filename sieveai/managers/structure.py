@@ -54,9 +54,10 @@ class Structure(ObjDict):
       return
 
     print('Self.Molecule', self.mol_path, self)
-    _xyz = Plugins.share_plugin('openbabel')
-    _res = _xyz.convert(
-      self.mol_path, PM.change_ext(self.mol_path, _to),
+    _CONVERTER = Plugins.share_plugin('meeko')()
+    _res = _CONVERTER.convert(
+      self.mol_path,
+      PM.change_ext(self.mol_path, _to),
       format_to=_to, format_from=self.mol_ext)
     print('res', _res)
 

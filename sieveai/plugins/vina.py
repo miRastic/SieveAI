@@ -20,12 +20,11 @@ class Vina(PluginBase):
 
   def boot(self, *args, **kwargs):
     self.setup(*args, **kwargs)
-    self.Receptors = self.MolManager.get_molecules('path_receptors', 'pdb', 'protein')
-    self.Ligands = self.MolManager.get_molecules('path_ligands', 'pdb', 'compound')
+    self.Receptors = self.MolManager.get_molecules('path_receptors', '*.pdb', 'protein')
+    self.Ligands = self.MolManager.get_molecules('path_ligands', '*.pdb', 'compound')
 
   def _prepare_receptor(self, _rec_id):
     self.Receptors[_rec_id].to_format('pdbqt')
-
 
   def run(self, *args, **kwargs):
     for _mol_id, _mol_obj in self.Receptors:

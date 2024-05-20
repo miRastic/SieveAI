@@ -10,8 +10,8 @@ class MoleculeManager(ManagerBase):
     """Get molecules with extension as Molecule object
 
     """
-    _path_key = args[0] if len(args) > 0 else kwargs.get("path_key")
-    _ext = args[1] if len(args) > 1 else kwargs.get("ext", "pdb")
+    _path_key = kwargs.get("path_key", args[0] if len(args) > 0 else None)
+    _ext = kwargs.get("ext", args[1] if len(args) > 1 else "*.pdb")
     _mol_type = args[2] if len(args) > 2 else kwargs.get("mol_type", "molecule")
 
     if not _path_key:
