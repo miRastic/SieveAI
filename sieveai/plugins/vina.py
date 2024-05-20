@@ -1,8 +1,13 @@
 
 from .base import PluginBase
-from ..managers.molecule import MoleculeManager
+from ..managers import MoleculeManager
+
+from vina import Vina # Python binding for AutoDock VINA
 
 class Vina(PluginBase):
+  is_ready = False
+  plugin_name = "AutoDock VINA"
+  url = "https://autodock-vina.readthedocs.io/en/latest/docking_python.html"
   MolManager = None
   Receptors = None
   Ligands = None

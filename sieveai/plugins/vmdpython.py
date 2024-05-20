@@ -2,6 +2,9 @@
 from .base import PluginBase
 
 class VMDPython(PluginBase):
+  is_ready = False
+  plugin_name = "VMD Python"
+  url = "https://vmd.robinbetz.com/"
   def __init__(self, *args, **kwargs):
     super().__init__(**kwargs)
 

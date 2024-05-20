@@ -1,8 +1,5 @@
-from UtilityLib import ObjDict, UM
+from UtilityLib import ObjDict
 
 class MoleculeBase(ObjDict):
-  UM = UM
-  ObjDict = ObjDict
   def __init__(self, *args, **kwargs):
-    super().__init__(**kwargs)
     self.update(kwargs)

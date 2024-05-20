@@ -1,5 +1,5 @@
 from .base import ManagerBase
-from ..entity import Structures
+from .structure import Structures
 
 class MoleculeManager(ManagerBase):
   mol_type_map = None

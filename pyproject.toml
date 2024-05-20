@@ -25,15 +25,13 @@
     'imageio',
     'lxml',
     'numpy',
-    'pandas',
-    'pdb-tools',
+    'vina',
+    'meeko',
+    'rdkit-pypi',
     'Pillow',
-    'psutil',
-    'python3-xlib',
     'requests',
     'seaborn',
     'SQLAlchemy',
-    'tqdm',
   ]
 
 [project.scripts]
