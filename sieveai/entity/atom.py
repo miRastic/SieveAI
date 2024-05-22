@@ -1,9 +1,9 @@
-from UtilityLib import ObjDict
+from ..base import DictConfig
 
-class Atom(ObjDict):
+class Atom(DictConfig):
   def __init__(self, *args, **kwargs):
     self.update(kwargs)
 
-class Atoms(ObjDict):
+class Atoms(DictConfig):
   def __init__(self, *args, **kwargs):
     self.update(kwargs)

@@ -1,8 +1,8 @@
-from UtilityLib import ObjDict
+from ..base import DictConfig
 from .base import ManagerBase
 
 class ConfigManager(ManagerBase):
-  settings = ObjDict()
+  settings = DictConfig()
   def __init__(self, *args, **kwargs):
     super().__init__(**kwargs)
     self.__set_defaults()
@@ -43,21 +43,21 @@ class ConfigManager(ManagerBase):
       'dir_plots': 'plots',
     }
 
-    _executables = ObjDict()
-    _executables.plugins.docking = ObjDict()
-    _executables.plugins.rescoring = ObjDict()
-    _executables.programs.docking = ['vina']
+    _executables = DictConfig()
+    _executables.plugins.docking = DictConfig()
+    _executables.plugins.rescoring = DictConfig()
+    _executables.programs.docking = ['hdocklite']
     _executables.programs.rescoring = []
 
     # Aggregators
     self.settings.structures = []
     self.settings.base.update(_common_vars)
     self.settings.exe.update(_executables)
-    self.settings.plugin_data = ObjDict()
-    self.settings.messages = ObjDict()
-    self.settings.messages.error = ObjDict()
-    self.settings.messages.info = ObjDict()
-    self.settings.messages.warning = ObjDict()
+    self.settings.plugin_data = DictConfig()
+    self.settings.messages = DictConfig()
+    self.settings.messages.error = DictConfig()
+    self.settings.messages.info = DictConfig()
+    self.settings.messages.warning = DictConfig()
 
   def _read_config(self, *args, **kwargs):
     _config_path = ""

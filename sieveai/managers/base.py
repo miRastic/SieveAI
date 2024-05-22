@@ -1,6 +1,6 @@
-from UtilityLib import ProjectManager, ObjDict
+from ..base import DictConfig, SieveAIBase
 
-class ManagerBase(ProjectManager):
-  ObjDict = ObjDict
+class ManagerBase(SieveAIBase):
+  ObjDict = DictConfig
   def __init__(self, *args, **kwargs):
     super().__init__(**kwargs)

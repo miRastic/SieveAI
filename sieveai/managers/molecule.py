@@ -20,6 +20,9 @@ class MoleculeManager(ManagerBase):
 
     _molecule_paths = self.find_files(self.settings.base[_path_key], _ext)
 
+    self.log_debug(f'MoleculeManager::Found {len(_molecule_paths)} {_mol_type} Paths')
+    self.log_debug(_molecule_paths)
+
     _structures_obj = Structures()
 
     for _mol_path in _molecule_paths:

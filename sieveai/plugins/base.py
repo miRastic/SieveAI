@@ -1,6 +1,6 @@
-from UtilityLib import ProjectManager
+from ..base import SieveAIBase
 
-class PluginBase(ProjectManager):
+class PluginBase(SieveAIBase):
   is_ready = False
   plugin_name = "Base"
   url = None

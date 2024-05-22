@@ -15,4 +15,3 @@ class CoreBase(ProjectManager):
       self.settings.plugin_data[_plugin_name].boot()
       self.settings.plugin_data[_plugin_name].run()
       self.settings.plugin_data[_plugin_name].shutdown()
-

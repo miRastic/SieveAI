@@ -1,9 +1,10 @@
 from .config import ConfigManager
 from .plugin import PluginManager
 
-class Manager(ConfigManager, PluginManager):
+class Manager(ConfigManager):
   ref_docking = None
   ref_rescoring = None
+
   def __init__(self, *args, **kwargs):
     super().__init__(**kwargs)
 
@@ -16,7 +17,7 @@ class Manager(ConfigManager, PluginManager):
       "path_base": (['-b'], "*", [self.OS.getcwd()], 'Provide base directory to run the process.', {}),
       "dir_receptors": (['-r'], None, 'receptors', 'Directory name containing receptors.', {}),
       "dir_ligands": (['-l'], None, 'ligands', 'Directory name containing ligands.', {}),
-      "docking_programs": (['-d'], "*", ['vina'], 'One or more Docking Programs eg: vina, hdock, auto.', {}),
+      "docking_programs": (['-d'], "*", ['vina'], 'One or more Docking Programs eg: vina, hdocklite, auto.', {}),
     }
 
     _params = self.get_cli_args(_cli_settings, version=_version_info)
@@ -37,7 +38,7 @@ class Manager(ConfigManager, PluginManager):
       self.settings.exe.plugins[_plugin_type] = {}
 
     for _dp in self.settings.exe.programs[_plugin_type] or []:
-      self.settings.exe.plugins[_plugin_type][_dp] = self.get_plugin(_dp)
+      self.settings.exe.plugins[_plugin_type][_dp] = PluginManager.share_plugin(_dp)
 
   def handle_docking(self, *args, **kwargs):
     from ..process.dock import Dock
@@ -89,3 +90,8 @@ class Manager(ConfigManager, PluginManager):
   def web_rescore(self):
     self._update_web_args()
     self.handle_rescoring()
+
+  def web_server(self, *args, **kwargs):
+    from .web import SieveAIAPI
+    _wm = SieveAIAPI(*args, **kwargs)
+    _wm.run_server()
