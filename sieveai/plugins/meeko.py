@@ -7,6 +7,7 @@ from rdkit import Chem
 class Meeko(PluginBase):
   is_ready = False
   plugin_name = "Meeko"
+  process = ['helper', 'conversion']
   url = "https://github.com/forlilab/Meeko"
   def __init__(self, *args, **kwargs):
     super().__init__(**kwargs)

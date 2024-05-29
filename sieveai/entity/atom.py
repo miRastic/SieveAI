@@ -1,4 +1,4 @@
-from ..base import DictConfig
+from ..plug import DictConfig
 
 class Atom(DictConfig):
   def __init__(self, *args, **kwargs):

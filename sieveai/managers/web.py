@@ -1,5 +1,5 @@
 from .base import ManagerBase
-from flask import Flask
+from flask import Flask, jsonify as FlaskJSON
 import signal as Signal
 import threading as Threader
 
@@ -14,6 +14,16 @@ class WebManager(ManagerBase):
     super().__init__(**kwargs)
     self.webapp = Flask(self.webapp_name)
 
+  response_status = 200
+  def send_api_data(self, *args, **kwargs):
+    """Return API Data to the Query"""
+    _data_dict = {
+      "status": self.response_status,
+      # "mimetype": 'application/json'
+    }
+    _data_dict.update(kwargs)
+    return FlaskJSON(**_data_dict)
+
   def add_endpoint(self, _endpoint, _handler):
     self.webapp.route(_endpoint)(_handler)
 
@@ -26,17 +36,16 @@ class WebManager(ManagerBase):
 
     self.log_debug(f'Server Started at {_host}:{_port}')
 
-    def _multi_serve():
+    def _webserver_listen():
       self.webapp.run(host=_host, port=_port, debug=_debug, use_reloader=_reloader)
 
-    self.server_thread = Threader.Thread(target=_multi_serve)
+    self.server_thread = Threader.Thread(target=_webserver_listen)
+    self.server_thread.setDaemon(True)
     self.server_thread.start()
     self.log_debug(f'Server Started at {_host}:{_port}')
 
   def _shutdown(self):
-    if self.server_thread:
-      self.log_debug("Shutting down server...")
-      self.server_thread.join()
+    """WIP"""
 
   def setup_signal_handlers(self):
     Signal.signal(Signal.SIGINT, self._handle_signal)
@@ -44,39 +53,6 @@ class WebManager(ManagerBase):
 
   def _handle_signal(self, signum, frame):
     self._shutdown()
-
-class SieveAIAPI(WebManager):
-  def __init__(self, *args, **kwargs):
-    super().__init__(**kwargs)
-
-  def api_base(self, *args, **kwargs):
-    return {
-      'comment': 'Dynamic Route for Non-specific use case',
-      'args': args,
-      'kwargs': kwargs,
-    }
-
-  def api_welcome(self, *args, **kwargs):
-    return {
-      'hello': 'Welcome Back',
-      'args': args,
-      'kwargs': kwargs,
-    }
-
-  def api_introduction(self, *args, **kwargs):
-    return {
-      'hello': 'Visit some other website',
-      'args': args,
-      'kwargs': kwargs,
-    }
-
-  def method_endpoint_maps(self):
-    return {
-      '/': self.api_base,
-      '<path:path>': self.api_base,
-      'welcome': self.api_welcome,
-      'intro': self.api_introduction,
-    }
 
   def run_server(self):
     _ep_methods = self.method_endpoint_maps() or {}
@@ -87,3 +63,37 @@ class SieveAIAPI(WebManager):
 
     self.setup_signal_handlers()
     self.serve()
+
+class SieveAIAPI(WebManager):
+  def __init__(self, *args, **kwargs):
+    super().__init__(**kwargs)
+
+  def api_dynamic_path(self, *args, **kwargs):
+    _path = kwargs.get('path', args[0] if len(args) > 0 else '/')
+
+    return self.send_api_data(path=_path, args=args, kwargs=kwargs)
+
+  def api_introduction(self, *args, **kwargs):
+    return self.send_api_data(hello='This website is working....')
+
+  def method_endpoint_maps(self):
+    return {
+      '/': self.api_introduction,
+      'tutorial': self.api_introduction,
+      '<path:path>': self.api_dynamic_path,
+      'settings': self.get_plugin_resources,
+    }
+
+  def get_plugin_resources(self, *args, **kwargs):
+    """Check executables and available software and programs available through plugins"""
+
+    # Default Settings???
+    _processes = {
+      'docking': ['vina', 'hdocklite', 'patchdock'],
+      'rescoring': ['annapurna', ],
+      'analysis': ['chimerax', 'vmdpython']
+    }
+
+    _process_plugins = {}
+
+    return self.send_api_data(processes=_processes, docking=_docking, rescoring=_rescoring, analysis=_analysis)

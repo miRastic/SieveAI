@@ -7,6 +7,7 @@ from vina import Vina # Python binding for AutoDock VINA
 class Vina(PluginBase):
   is_ready = False
   plugin_name = "AutoDock VINA"
+  process = ['docking']
   url = "https://autodock-vina.readthedocs.io/en/latest/docking_python.html"
   MolManager = None
   Receptors = None

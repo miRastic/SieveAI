@@ -1,4 +1,4 @@
-from ..base import DictConfig, SieveAIBase
+from ..plug import DictConfig, SieveAIBase
 
 class ManagerBase(SieveAIBase):
   ObjDict = DictConfig

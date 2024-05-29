@@ -1,4 +1,4 @@
-from ..base import SieveAIBase
+from ..plug import SieveAIBase
 
 class PluginBase(SieveAIBase):
   is_ready = False

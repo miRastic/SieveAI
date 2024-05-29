@@ -21,3 +21,6 @@ class PluginManager:
 
   def get_plugin(self, _plugin_name):
     return PluginManager.share_plugin(_plugin_name)
+
+  # Register plugin
+  # Discover plugin

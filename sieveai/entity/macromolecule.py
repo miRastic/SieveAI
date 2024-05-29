@@ -13,7 +13,7 @@ class MacroMolecule(Molecule):
       "natural_ligand": None,
     }
     _defaults.update(kwargs)
-    self.update(_defaults)
+    super().__init__(*args, **_defaults)
 
 class Protein(MacroMolecule):
   def __init__(self, *args, **kwargs):
@@ -21,7 +21,7 @@ class Protein(MacroMolecule):
       "mol_cat": 'protein'
     }
     _defaults.update(kwargs)
-    self.update(_defaults)
+    super().__init__(*args, **_defaults)
 
 class DNA(MacroMolecule):
   def __init__(self, *args, **kwargs):
@@ -29,7 +29,7 @@ class DNA(MacroMolecule):
       "mol_cat": 'dna'
     }
     _defaults.update(kwargs)
-    self.update(_defaults)
+    super().__init__(*args, **_defaults)
 
 class RNA(MacroMolecule):
   def __init__(self, *args, **kwargs):
@@ -37,4 +37,4 @@ class RNA(MacroMolecule):
       "mol_cat": 'rna'
     }
     _defaults.update(kwargs)
-    self.update(_defaults)
+    super().__init__(*args, **_defaults)

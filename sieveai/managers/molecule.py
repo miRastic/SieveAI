@@ -18,16 +18,6 @@ class MoleculeManager(ManagerBase):
       self.settings.messages.error['mol_manager'] = 'No pathkey was passed.'
       return None
 
-    _molecule_paths = self.find_files(self.settings.base[_path_key], _ext)
-
-    self.log_debug(f'MoleculeManager::Found {len(_molecule_paths)} {_mol_type} Paths')
-    self.log_debug(_molecule_paths)
-
-    _structures_obj = Structures()
-
-    for _mol_path in _molecule_paths:
-      _structures_obj.add(_mol_path, _mol_type)
-
-    self.settings.structures.append(_structures_obj)
+    _structures_obj = Structures(path_molecules=self.settings.base[_path_key], ext_molecules=_ext)
 
     return _structures_obj

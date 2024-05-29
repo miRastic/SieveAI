@@ -1,4 +1,4 @@
-from ..base import DictConfig
+from ..plug import DictConfig
 from .base import ManagerBase
 
 class ConfigManager(ManagerBase):

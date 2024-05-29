@@ -95,3 +95,4 @@ class Manager(ConfigManager):
     from .web import SieveAIAPI
     _wm = SieveAIAPI(*args, **kwargs)
     _wm.run_server()
+    return _wm

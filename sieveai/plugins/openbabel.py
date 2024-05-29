@@ -5,6 +5,7 @@ from openbabel import openbabel as OBabel
 class OpenBabel(PluginBase):
   is_ready = False
   plugin_name = "OpenBabel"
+  process = ['helper', 'conversion']
   url = "https://github.com/openbabel/openbabel"
   def __init__(self, *args, **kwargs):
     super().__init__(**kwargs)

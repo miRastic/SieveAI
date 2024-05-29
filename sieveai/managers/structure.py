@@ -1,69 +1,6 @@
-from ..base import DictConfig, SieveAIBaseInit
-
 from ..entity import Molecule, Compound, MacroMolecule, RNA, DNA, Protein
-from .plugin import PluginManager as Plugins
 
-class Structure(DictConfig):
-  molecule = None
-  def __init__(self, *args, **kwargs):
-    _mol_id = kwargs.get("mol_path", args[0] if len(args) > 0 else 'Unknown-XXX')
-    _mol_path = kwargs.get("mol_path", args[1] if len(args) > 1 else None)
-    _mol_parser = kwargs.get("mol_parser", args[2] if len(args) > 2 else Molecule)
-
-    _defaults = {
-      "mol_id": _mol_id,
-      "mol_ext": None,
-
-      "mol_file_size": None, # bytes
-
-      "n_models": 0,
-      "n_molecules": 0,
-      "n_atoms": 0,
-      "n_hetatoms": 0,
-      "n_residues": 0,
-
-      "db_sources": [],
-
-      "is_valid": None,
-      "is_2D": None,
-      "is_3D": None,
-      "is_gz": None,
-      "mol_type": None,
-      "mol_format": None,
-      "mol_path": _mol_path,
-      "mol_parser": _mol_parser,
-      "molecule": _mol_parser(_mol_path)
-    }
-
-    _defaults.update(kwargs)
-    self.update(_defaults)
-    self.parse_additional_attributes()
-
-  def parse_additional_attributes(self):
-    _mol_path = self.mol_path
-    if _mol_path and SieveAIBaseInit.ext(_mol_path) == 'gz':
-      self.is_gz = True
-      _mol_path = SieveAIBaseInit.filename(_mol_path, with_dir=True)
-
-    self.mol_id = SieveAIBaseInit.filename(_mol_path)
-    self.mol_ext = None if _mol_path is None else SieveAIBaseInit.ext(_mol_path)
-    _, self.mol_file_size, _f_unit = SieveAIBaseInit.get_file_size(_mol_path)
-
-  def to_format(self, *args, **kwargs):
-    _to = kwargs.get('to', args[0] if len(args) > 0 else None)
-    if _to is None:
-      return
-
-    print('Self.Molecule', self.mol_path, self)
-    _CONVERTER = Plugins.share_plugin('meeko')()
-    _res = _CONVERTER.convert(
-      self.mol_path,
-      PM.change_ext(self.mol_path, _to),
-      format_to=_to, format_from=self.mol_ext)
-    print('res', _res)
-
-class Structures(DictConfig):
-  molecules = {}
+class Structures():
   mol_formats = {
     'pdb': 'PDB',
     'pdbqt': 'PDBQT',
@@ -82,29 +19,29 @@ class Structures(DictConfig):
     }
 
   def __init__(self, *args, **kwargs):
-    ...
+    self.path_molecules = kwargs.get('path_molecules', args[0] if len(args) > 0 else None)
+    self.ext_molecules = kwargs.get('ext_molecules', args[1] if len(args) > 1 else None)
+    self.type_molecules = kwargs.get('type_molecules', args[2] if len(args) > 2 else None)
+    self.molecules = {}
+    self._discover_molecules()
 
-  def add(self, *args, **kwargs):
-    _mol_path = kwargs.get("mol_path", args[0] if len(args) > 0 else None)
-    _mol_type = kwargs.get("mol_type", args[1] if len(args) > 1 else "molecule")
+  def _discover_molecules(self):
+    if self.path_molecules.exists():
+      for _file in self.path_molecules.files():
+        # Get unique ID instead of stem
+        self.molecules[_file.stem] = self.mol_type_map.get(self.type_molecules)(_file.stem, _file)
 
-    _mol_id = SieveAIBaseInit.filename(_mol_path)
-    _mol_parser = self.mol_type_map.get(_mol_type, 'molecule')
-
-    _mol_obj = Structure(**{
-        'mol_ext': SieveAIBaseInit.file_ext(_mol_path),
-        'mol_format': SieveAIBaseInit.file_ext(_mol_path), # Determine the mol_format
-        'mol_id': _mol_id,
-        'mol_parser': _mol_parser,
-        'mol_type': _mol_type,
-        'mol_path': _mol_path,
-      })
-
-    self.molecules[_mol_obj.mol_id] = _mol_obj
+  def __repr__(self, *args, **kwargs):
+    return f"""Structures of type: {self.type_molecules} with extension {self.ext_molecules} from {self.path_molecules}."""
 
   def __getitem__(self, *args, **kwargs):
-    _key = args[0] if len(args) > 0 else kwargs.get('key', self.molecules.keys()[0])
-    return self.molecules[_key]
+    try:
+      _first_key = self.molecules.keys()[0]
+    except:
+      _first_key = None
+
+    _key = kwargs.get('key', args[0] if len(args) > 0 else _first_key)
+    return self.molecules.get(_key)
 
   def __iter__(self, *args, **kwargs):
     for _mol_id, _mol_obj in self.molecules.items():
@@ -113,17 +50,28 @@ class Structures(DictConfig):
   def __len__(self):
     return len(self.molecules.keys())
 
+  len = __len__
+
+  def items(self):
+    return list(self.molecules.items())
+
+  def keys(self):
+    return list(self.molecules.keys())
+
+  ids = keys
+  mol_ids = keys
+
   def parse_pdb(self, *args, **kwargs):
     return None
     if not self.mol_structure is None:
       return
-    _biopython = [SieveAIBaseInit.require('Bio', 'BioPy'), SieveAIBaseInit.require('Bio.PDB', 'BioPDB')]
-    if all(_biopython) and self.mol_ext == 'pdb':
-      try:
-        _parser = SieveAIBaseInit.BioPDB.PDBParser(QUIET=True)
-        self.mol_pdb = _parser.get_structure(self.mol_id, self.mol_path)
-        # List models/molecules, chains, residues, atoms
-      except Exception as _e:
-        self.mol_error = f'Error in accessing molecule {self.mol_id}: {_e}'
-    else:
-      ...
+    # _biopython = [SieveAIBaseInit.require('Bio', 'BioPy'), SieveAIBaseInit.require('Bio.PDB', 'BioPDB')]
+    # if all(_biopython) and self.mol_ext == 'pdb':
+    #   try:
+    #     _parser = SieveAIBaseInit.BioPDB.PDBParser(QUIET=True)
+    #     self.mol_pdb = _parser.get_structure(self.mol_id, self.mol_path)
+    #     # List models/molecules, chains, residues, atoms
+    #   except Exception as _e:
+    #     self.mol_error = f'Error in accessing molecule {self.mol_id}: {_e}'
+    # else:
+    #   ...
