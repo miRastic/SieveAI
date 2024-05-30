@@ -31,29 +31,33 @@ class Manager(ConfigManager):
     else:
       return self.settings
 
-  def manage_exe_plugins(self, *args, **kwargs):
-    _plugin_type = args[0] if len(args) > 0 else kwargs.get("plugin_type", "docking")
+  def _manage_exe_plugins(self, *args, **kwargs):
+    _plugin_type = kwargs.get("plugin_type", args[0] if len(args) > 0 else "docking")
 
-    if not isinstance(self.settings.exe.plugins[_plugin_type], (list)):
-      self.settings.exe.plugins[_plugin_type] = {}
+    if not isinstance(self.settings.exe.plugin_refs[_plugin_type], (dict)):
+      self.settings.exe.plugin_refs[_plugin_type] = {}
 
-    for _dp in self.settings.exe.programs[_plugin_type] or []:
-      self.settings.exe.plugins[_plugin_type][_dp] = PluginManager.share_plugin(_dp)
+    for _dp in self.settings.exe.plugin_list[_plugin_type] or []:
+      self.settings.exe.plugin_refs[_plugin_type][_dp] = PluginManager.share_plugin(_dp)
 
   def handle_docking(self, *args, **kwargs):
     from ..process.dock import Dock
-    self.settings.base.update(kwargs or {})
+    self.settings.base.update(kwargs)
 
     if self.settings.base.path_base:
       self.path_base = self.settings.base.path_base
 
-    if self.settings.base.docking_programs and len(self.settings.base.docking_programs) > 0:
-      self.settings.exe.programs.docking = self.settings.base.docking_programs
+    self.log_debug(f'Current base path is {self.path_base}')
 
-    self.manage_exe_plugins('docking')
+    if self.settings.base.docking_programs and len(self.settings.base.docking_programs) > 0:
+      self.settings.exe.plugin_list.docking = self.settings.base.docking_programs
+
+    self._manage_exe_plugins('docking')
 
     self.ref_docking = Dock(path_base=self.path_base, settings=self.settings) # pass settings to Dock
+    self.log_debug(f'Starting docking with plugins {tuple(self.settings.exe.plugin_list.docking)}.')
     self.ref_docking.process()
+
 
   def handle_rescoring(self, *args, **kwargs):
     from ..process.rescore import Rescore
@@ -63,9 +67,9 @@ class Manager(ConfigManager):
       self.path_base = self.settings.base.path_base
 
     if self.settings.base.rescoring_programs and len(self.settings.base.rescoring_programs) > 0:
-      self.settings.exe.programs.rescoring = self.settings.base.rescoring_programs
+      self.settings.exe.plugin_list.rescoring = self.settings.base.rescoring_programs
 
-    self.manage_exe_plugins('rescoring')
+    self._manage_exe_plugins('rescoring')
 
     self.ref_rescoring = Rescore(path_base=self.path_base, settings=self.settings)
     self.ref_rescoring.process()

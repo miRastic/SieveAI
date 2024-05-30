@@ -1,8 +1,8 @@
 from UtilityLib import ProjectManager
 
 class CoreBase(ProjectManager):
-  settings = None
   def __init__(self, *args, **kwargs):
+    self.settings = None
     super().__init__(**kwargs)
 
   def process(self, *args, **kwargs):
@@ -10,7 +10,7 @@ class CoreBase(ProjectManager):
     if self.settings.base.path_base:
       self.path_base = self.settings.base.path_base
 
-    for _plugin_name, _PluginClass in (self.settings.exe.plugins[self.process_type] or {}).items():
+    for _plugin_name, _PluginClass in (self.settings.exe.plugin_refs.docking or {}).items():
       self.settings.plugin_data[_plugin_name] = _PluginClass(path_base=self.path_base, settings=self.settings)
       self.settings.plugin_data[_plugin_name].boot()
       self.settings.plugin_data[_plugin_name].run()
