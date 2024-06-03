@@ -20,14 +20,17 @@ class Structures():
 
   def __init__(self, *args, **kwargs):
     self.path_molecules = kwargs.get('path_molecules', args[0] if len(args) > 0 else None)
-    self.ext_molecules = kwargs.get('ext_molecules', args[1] if len(args) > 1 else None)
+    self.ext_molecules = kwargs.get('ext_molecules', args[1] if len(args) > 1 else ".pdb")
     self.type_molecules = kwargs.get('type_molecules', args[2] if len(args) > 2 else None)
     self.molecules = {}
     self._discover_molecules()
 
   def _discover_molecules(self):
     if self.path_molecules.exists():
-      for _file in self.path_molecules.files():
+      _ext = self.ext_molecules
+      if not '*' in _ext:
+        _ext = f"*{_ext}"
+      for _file in self.path_molecules.search(_ext):
         # Get unique ID instead of stem
         self.molecules[_file.stem] = self.mol_type_map.get(self.type_molecules)(_file.stem, _file)
 

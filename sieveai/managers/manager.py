@@ -31,6 +31,9 @@ class Manager(ConfigManager):
     else:
       return self.settings
 
+  def get_plugin(self, _plugin_name):
+    return PluginManager.share_plugin(_plugin_name)
+
   def _manage_exe_plugins(self, *args, **kwargs):
     _plugin_type = kwargs.get("plugin_type", args[0] if len(args) > 0 else "docking")
 
@@ -38,7 +41,7 @@ class Manager(ConfigManager):
       self.settings.exe.plugin_refs[_plugin_type] = {}
 
     for _dp in self.settings.exe.plugin_list[_plugin_type] or []:
-      self.settings.exe.plugin_refs[_plugin_type][_dp] = PluginManager.share_plugin(_dp)
+      self.settings.exe.plugin_refs[_plugin_type][_dp] = self.get_plugin(_dp)
 
   def handle_docking(self, *args, **kwargs):
     from ..process.dock import Dock
@@ -53,11 +56,11 @@ class Manager(ConfigManager):
       self.settings.exe.plugin_list.docking = self.settings.base.docking_programs
 
     self._manage_exe_plugins('docking')
+    self._manage_exe_plugins('analysis')
 
     self.ref_docking = Dock(path_base=self.path_base, settings=self.settings) # pass settings to Dock
     self.log_debug(f'Starting docking with plugins {tuple(self.settings.exe.plugin_list.docking)}.')
     self.ref_docking.process()
-
 
   def handle_rescoring(self, *args, **kwargs):
     from ..process.rescore import Rescore
@@ -73,6 +76,15 @@ class Manager(ConfigManager):
 
     self.ref_rescoring = Rescore(path_base=self.path_base, settings=self.settings)
     self.ref_rescoring.process()
+
+  def get_process_status(self, *args, **kwargs):
+    _status = {
+      "queue": self.queue_task_status()
+    }
+    for _idx, _item in self.settings.plugin_data.items():
+      _status[_idx] = _item.status()
+
+    return _status
 
   def cli_dock(self):
     self._update_cli_args()

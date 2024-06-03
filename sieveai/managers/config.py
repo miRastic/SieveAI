@@ -3,7 +3,6 @@ from .base import ManagerBase
 
 class ConfigManager(ManagerBase):
   def __init__(self, *args, **kwargs):
-    self.settings = DictConfig()
     super().__init__(**kwargs)
     self.__set_defaults()
     self.__process_config()
@@ -47,19 +46,17 @@ class ConfigManager(ManagerBase):
 
     _executables.plugin_refs.docking = DictConfig()
     _executables.plugin_refs.rescoring = DictConfig()
+    _executables.plugin_refs.analysis = DictConfig()
 
     _executables.plugin_list.docking = ['hdocklite']
     _executables.plugin_list.rescoring = []
+    _executables.plugin_list.analysis = ['vmdpython', 'chimerax']
 
     # Aggregators
     self.settings.structures = []
     self.settings.base.update(_common_vars)
     self.settings.exe.update(_executables)
     self.settings.plugin_data = DictConfig()
-    # self.settings.messages = DictConfig()
-    # self.settings.messages.error = DictConfig()
-    # self.settings.messages.info = DictConfig()
-    # self.settings.messages.warning = DictConfig()
 
   def _read_config(self, *args, **kwargs):
     _config_path = ""

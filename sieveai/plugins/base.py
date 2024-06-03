@@ -6,7 +6,6 @@ class PluginBase(SieveAIBase):
   url = None
   def __init__(self, *args, **kwargs):
     self.path_base = None
-    self.settings = None
     super().__init__(**kwargs)
 
   def installation_instructions(self, *args, **kwargs):

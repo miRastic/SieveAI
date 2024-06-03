@@ -1,8 +1,7 @@
-from UtilityLib import ProjectManager
+from ..plug import SieveAIBase
 
-class CoreBase(ProjectManager):
+class CoreBase(SieveAIBase):
   def __init__(self, *args, **kwargs):
-    self.settings = None
     super().__init__(**kwargs)
 
   def process(self, *args, **kwargs):
