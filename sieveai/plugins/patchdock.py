@@ -2,14 +2,11 @@
 from .base import PluginBase
 from ..managers import Structures
 
-from vina import Vina # Python binding for AutoDock VINA
-
-class Vina(PluginBase):
+class PatchDock(PluginBase):
   is_ready = False
-  plugin_name = "AutoDock VINA"
-  process = ['docking']
-  url = "https://autodock-vina.readthedocs.io/en/latest/docking_python.html"
-
+  plugin_name = "PatchDock"
+  process = ['analysis']
+  url = "https://bioinfo3d.cs.tau.ac.il/PatchDock/"
   Receptors = None
   Ligands = None
 
@@ -21,7 +18,6 @@ class Vina(PluginBase):
 
   def boot(self, *args, **kwargs):
     self.setup(*args, **kwargs)
-    ...
 
   def _prepare_receptor(self, _rec_id):
     ...

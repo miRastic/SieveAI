@@ -89,11 +89,10 @@ class SieveAIAPI(WebManager):
 
     # Default Settings???
     _processes = {
-      'docking': ['vina', 'hdocklite', 'patchdock'],
-      'rescoring': ['annapurna', ],
+      'docking': ['vina', 'hdocklite', 'patchdock', 'annapurna'],
       'analysis': ['chimerax', 'vmdpython']
     }
 
     _process_plugins = {}
 
-    return self.send_api_data(processes=_processes, docking=_docking, rescoring=_rescoring, analysis=_analysis)
+    return self.send_api_data(processes=_processes)

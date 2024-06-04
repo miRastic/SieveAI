@@ -2,8 +2,7 @@ from .config import ConfigManager
 from .plugin import PluginManager
 
 class Manager(ConfigManager):
-  ref_docking = None
-  ref_rescoring = None
+  ref_processes = None
 
   def __init__(self, *args, **kwargs):
     super().__init__(**kwargs)
@@ -44,7 +43,7 @@ class Manager(ConfigManager):
       self.settings.exe.plugin_refs[_plugin_type][_dp] = self.get_plugin(_dp)
 
   def handle_docking(self, *args, **kwargs):
-    from ..process.dock import Dock
+    from ..process.process import Process
     self.settings.base.update(kwargs)
 
     if self.settings.base.path_base:
@@ -58,24 +57,9 @@ class Manager(ConfigManager):
     self._manage_exe_plugins('docking')
     self._manage_exe_plugins('analysis')
 
-    self.ref_docking = Dock(path_base=self.path_base, settings=self.settings) # pass settings to Dock
+    self.ref_processes = Process(path_base=self.path_base, settings=self.settings) # pass settings to Dock
     self.log_debug(f'Starting docking with plugins {tuple(self.settings.exe.plugin_list.docking)}.')
-    self.ref_docking.process()
-
-  def handle_rescoring(self, *args, **kwargs):
-    from ..process.rescore import Rescore
-    self.settings.update(kwargs or {})
-
-    if self.settings.base.path_base:
-      self.path_base = self.settings.base.path_base
-
-    if self.settings.base.rescoring_programs and len(self.settings.base.rescoring_programs) > 0:
-      self.settings.exe.plugin_list.rescoring = self.settings.base.rescoring_programs
-
-    self._manage_exe_plugins('rescoring')
-
-    self.ref_rescoring = Rescore(path_base=self.path_base, settings=self.settings)
-    self.ref_rescoring.process()
+    self.ref_processes.process()
 
   def get_process_status(self, *args, **kwargs):
     _status = {
@@ -90,10 +74,6 @@ class Manager(ConfigManager):
     self._update_cli_args()
     self.handle_docking()
 
-  def cli_rescore(self):
-    self._update_cli_args()
-    self.handle_rescoring()
-
   # Manage web operation
 
   def _update_web_args(self):
@@ -102,10 +82,6 @@ class Manager(ConfigManager):
   def web_dock(self):
     self._update_web_args()
     self.handle_docking()
-
-  def web_rescore(self):
-    self._update_web_args()
-    self.handle_rescoring()
 
   def web_server(self, *args, **kwargs):
     from .web import SieveAIAPI

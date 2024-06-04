@@ -5,7 +5,7 @@ from vmd import molecule as VMDMol, measure as Measure, atomsel as AtomSel
 class VMDPython(PluginBase):
   is_ready = False
   plugin_name = "VMD Python"
-  process = ['analysis', 'helper', 'conversion']
+  process = ['analysis']
   url = "https://vmd.robinbetz.com/"
   _matrix_columns = ['distance',
                    'SASA_1', 'SASA_2', 'Contact_1', 'Contact_2',

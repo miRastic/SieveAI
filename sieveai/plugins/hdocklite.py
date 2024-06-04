@@ -8,7 +8,6 @@ class HDockLite(PluginBase):
   plugin_name = "HDockLite"
   process = ['docking']
   url = "http://hdock.phys.hust.edu.cn/"
-  MolManager = None
 
   _max_conformers = 10
 
@@ -28,6 +27,7 @@ class HDockLite(PluginBase):
 
     self.path_plugin_res = (self.path_base / 'docking' / self.plugin_name).validate()
     self.path_update = (self.path_plugin_res / self.plugin_name).with_suffix('.pkl.gz')
+    self.path_excel_results = (self.path_base / self.plugin_name ).with_suffix('.Results.xlsx')
     self._restore_progress()
 
     self._steps_map_methods = {
@@ -86,7 +86,7 @@ class HDockLite(PluginBase):
 
     _model_results = []
     for _model in _models:
-      _vmd_id = _VPY.parse_molecule("pdb", str(_model))
+      _vmd_id = _VPY.parse_molecule(str(_model))
       _rec_obj = _VPY.get_atom_sel('chain A', _vmd_id)
       _lig_obj = _VPY.get_atom_sel('chain B', _vmd_id)
 
@@ -99,14 +99,16 @@ class HDockLite(PluginBase):
 
     self.log_debug(f'{cuid} Conformers Results')
     self.log_debug(_model_results)
-    self.Complexes[cuid].conformer_interactions = self.DF(_model_results)
+    _df_conformer_scores = self.DF(_model_results)
+    _df_conformer_scores['plugin'] = self.plugin_name
+    self.Complexes[cuid].conformer_scores = _df_conformer_scores
     self._update_progress()
 
   def _run_preprocess_check(self, cuid):
-    """WIP"""
+    return cuid
 
   def _finalise_complex(self, cuid):
-    """WIP"""
+    return cuid
 
   def status(self, cuid=None):
     _status = None
@@ -202,8 +204,65 @@ class HDockLite(PluginBase):
   def run(self, *args, **kwargs):
     self._queue_complexes()
 
+  def _rank_conformers(self, _all_res):
+    _ranking_columns = {
+        'Score': True,
+        'RMSD': True,
+        'distance': True,
+        'SASA_1': True,
+        'SASA_2': True,
+        'HBond_total': False,
+        'Contact_Total': False,
+      }
+
+    _all_res = _all_res.reset_index(drop=True)
+    _all_res['HBond_total'] = (_all_res.HBond_1_don.apply(lambda _x: len(set(_x))) + _all_res.HBond_2_don.apply(lambda _x: len(set(_x))))
+    _all_res['Contact_Total'] = (_all_res.Contact_1.apply(lambda _x: len(set(_x))) + _all_res.Contact_2.apply(lambda _x: len(set(_x))))
+
+    _ranking_cols = []
+    for _rc, _rval in _ranking_columns.items():
+      _rc_rank_col = f"{_rc}__RANK"
+      _ranking_cols.append(_rc_rank_col)
+      _all_res[_rc] = self.PD.to_numeric(_all_res[_rc], errors='coerce')
+      _all_res[_rc] = _all_res[_rc].fillna(_all_res[_rc].mean())
+      _all_res[_rc_rank_col] = _all_res[_rc].rank(ascending=_rval)
+
+    _all_res['Final_Score'] = _all_res[_ranking_cols].sum(axis='columns')
+    _all_res = _all_res.sort_values('Final_Score')
+
+    _all_res = _all_res.drop(columns=_ranking_cols)
+    _all_res[list(_ranking_columns.keys())] = _all_res[list(_ranking_columns.keys())].round(4)
+
+    _reindexed_score = _all_res.Final_Score.reset_index(drop=True)
+    _all_res['Final_Rank'] = _reindexed_score.index + 1
+
+    _top_res = _all_res.loc[_all_res.groupby('Complex_uid')['Final_Score'].idxmin()].copy()
+    _top_res = _top_res.reset_index(drop=True)
+    _top_res = _top_res[['Final_Rank', 'Complex_uid', 'Number',
+                         'Ligand', 'Score', 'RMSD', 'distance',
+                         'SASA_1', 'SASA_2', 'HBond_total',
+                         'Contact_Total',]].copy()
+
+    # Top Results with Ranking
+    _top_res = _top_res.sort_values('Final_Rank')
+
+    return _all_res, _top_res
+
+  _df_results = None
   def shutdown(self, *args, **kwargs):
-    # Check if all compounds are docked
-    # Tabulate docking scores
-    # Prepare summary of docking
-    ...
+    self.require('pandas', 'PD')
+
+    # Combine all the interactions
+    _score_table = None
+    for _idx, _cmplx in self.Complexes.items():
+      if not isinstance(_cmplx, (dict)):
+        continue
+      _score_table = _cmplx.conformer_scores if _score_table is None else self.PD.concat([_score_table, _cmplx.conformer_scores])
+
+    # Save conformers and ranks as excel
+    self._df_results, _top_ranked = self._rank_conformers(_score_table)
+    self.pd_excel(self.path_excel_results, self._df_results, sheet_name=f"{self.plugin_name}-All-Ranked")
+    self.pd_excel(self.path_excel_results, _top_ranked, sheet_name=f"{self.plugin_name}-Top-Ranked")
+
+
+    # Prepare HTML server for visualisation of results

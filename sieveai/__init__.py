@@ -5,10 +5,6 @@ def dock():
   _m = Manager()
   _m.cli_dock()
 
-def rescore():
-  _m = Manager()
-  _m.cli_rescore()
-
 def web():
   _m = Manager()
   _m.web_server()

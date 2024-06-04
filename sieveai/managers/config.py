@@ -30,14 +30,12 @@ class ConfigManager(ManagerBase):
       'path_receptors': None,
       'path_ligands': None,
       'path_docking': None,
-      'path_analysis': None,
       'path_results': None,
       'path_plots': None,
 
       'dir_receptors': 'receptors',
       'dir_ligands': 'ligands',
       'dir_docking': 'docking',
-      'dir_analysis': 'analysis',
       'dir_results': 'results',
       'dir_plots': 'plots',
     }
@@ -45,11 +43,9 @@ class ConfigManager(ManagerBase):
     _executables = DictConfig()
 
     _executables.plugin_refs.docking = DictConfig()
-    _executables.plugin_refs.rescoring = DictConfig()
     _executables.plugin_refs.analysis = DictConfig()
 
     _executables.plugin_list.docking = ['hdocklite']
-    _executables.plugin_list.rescoring = []
     _executables.plugin_list.analysis = ['vmdpython', 'chimerax']
 
     # Aggregators
@@ -59,14 +55,7 @@ class ConfigManager(ManagerBase):
     self.settings.plugin_data = DictConfig()
 
   def _read_config(self, *args, **kwargs):
-    _config_path = ""
-    if (self.exists(_config_path)):
-      # Read config file
-      ...
-    else:
-      # Write a default config file
-      ...
+    pass
 
   def _write_config(self, *args, **kwargs):
-
-    ...
+    pass

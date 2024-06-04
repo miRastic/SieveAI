@@ -1,6 +1,5 @@
 from .base import CoreBase
 
-class Dock(CoreBase):
-  process_type = 'docking'
+class Process(CoreBase):
   def __init__(self, *args, **kwargs):
     super().__init__(**kwargs)
