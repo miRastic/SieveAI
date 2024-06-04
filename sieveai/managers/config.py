@@ -7,7 +7,7 @@ class ConfigManager(ManagerBase):
     self.__set_defaults()
     self.__process_config()
 
-  def __process_config(self):
+  def __process_config(self) -> None:
     if self.settings.base.path_receptors is None:
       self.settings.base.path_receptors = self.get_path(self.settings.base.dir_receptors)
 

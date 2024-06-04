@@ -97,12 +97,11 @@ class HDockLite(PluginBase):
       _remarks.update(_interactions)
       _model_results.append(_remarks)
 
-    self.log_debug(f'{cuid} Conformers Results')
-    self.log_debug(_model_results)
+    self.log_debug(f'{cuid}:: Conformer Results Generated')
+
     _df_conformer_scores = self.DF(_model_results)
     _df_conformer_scores['plugin'] = self.plugin_name
     self.Complexes[cuid].conformer_scores = _df_conformer_scores
-    self._update_progress()
 
   def _run_preprocess_check(self, cuid):
     return cuid
@@ -131,15 +130,15 @@ class HDockLite(PluginBase):
           continue
 
         _step = self.Complexes[cuid].step._current
-        self.log_debug(f"Step: {_step}")
+
+        if self.Complexes[cuid].step.is_last:
+          self.log_debug(f"{cuid}:: Last Step: {_step}")
+        else:
+          self.log_debug(f"{cuid}:: Step: {_step}")
 
         self._steps_map_methods[_step](cuid)
         self.Complexes[cuid].steps_completed.append(_step)
         self._update_progress()
-
-        if self.Complexes[cuid].step.is_last:
-          self.log_debug(f"Last Step: {_step}")
-          break
 
   _is_multiprocess = True
 
@@ -168,7 +167,6 @@ class HDockLite(PluginBase):
       _complex_uid = self.slug(f"{_rec.mol_id}--{_lig.mol_id}")
 
       if not _complex_uid in self.Complexes:
-
         self.Complexes[_complex_uid] = self.ObjDict()
 
         _complex_path = (self.path_plugin_res / _complex_uid).validate()
@@ -191,7 +189,7 @@ class HDockLite(PluginBase):
             "path_log": _complex_log_path,
           })
 
-        self.log_debug(f'Queued {_complex_uid}')
+        self.log_debug(f'{_complex_uid}:: Queued.')
 
       if self._is_multiprocess:
         self.queue_task(self._process_complex, _complex_uid)
@@ -200,6 +198,7 @@ class HDockLite(PluginBase):
 
     self._update_progress()
     self.process_queue()
+    self.queue_final_callback(self._tabulate_results)
 
   def run(self, *args, **kwargs):
     self._queue_complexes()
@@ -249,20 +248,29 @@ class HDockLite(PluginBase):
     return _all_res, _top_res
 
   _df_results = None
-  def shutdown(self, *args, **kwargs):
+  def _tabulate_results(self, *args, **kwargs):
+    while self.queue_running > 0:
+      self.log_debug()
+      self.time_sleep(30)
+
     self.require('pandas', 'PD')
 
     # Combine all the interactions
     _score_table = None
     for _idx, _cmplx in self.Complexes.items():
-      if not isinstance(_cmplx, (dict)):
+      if not isinstance(_cmplx, (dict)) or not 'conformer_scores' in _cmplx:
         continue
-      _score_table = _cmplx.conformer_scores if _score_table is None else self.PD.concat([_score_table, _cmplx.conformer_scores])
+
+      if _score_table is None:
+        _score_table = _cmplx.conformer_scores
+      else:
+        _score_table = self.PD.concat([_score_table, _cmplx.conformer_scores])
 
     # Save conformers and ranks as excel
     self._df_results, _top_ranked = self._rank_conformers(_score_table)
     self.pd_excel(self.path_excel_results, self._df_results, sheet_name=f"{self.plugin_name}-All-Ranked")
     self.pd_excel(self.path_excel_results, _top_ranked, sheet_name=f"{self.plugin_name}-Top-Ranked")
 
-
+  def shutdown(self, *args, **kwargs):
     # Prepare HTML server for visualisation of results
+    pass

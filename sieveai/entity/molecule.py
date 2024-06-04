@@ -1,5 +1,4 @@
 from .base import MoleculeBase
-from .atom import Atoms
 
 class Molecule(MoleculeBase):
   def __init__(self, *args, **kwargs):
@@ -7,8 +6,6 @@ class Molecule(MoleculeBase):
     _mol_path = kwargs.get("mol_path", args[1] if len(args) > 1 else None)
 
     _defaults = {
-      "n_atoms": None,
-      "_atoms": Atoms(),
       "mol_id": _mol_id,
       "mol_path": _mol_path,
     }
@@ -16,14 +13,13 @@ class Molecule(MoleculeBase):
     super().__init__(*args, **_defaults)
     self.parse_additional_attributes()
 
-  def parse_additional_attributes(self):
+  def parse_additional_attributes(self) -> None:
     _other_attribs = {
       "mol_ext": self.mol_path.ext(),
       "mol_file_size": self.mol_path.size(),
 
       # "n_models": 0,
       # "n_molecules": 0,
-      # "n_atoms": 0,
       # "n_hetatoms": 0,
       # "n_residues": 0,
 

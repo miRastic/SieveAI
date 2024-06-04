@@ -2,14 +2,11 @@
 from .base import PluginBase
 from ..managers import Structures
 
-class AlphaFold(PluginBase):
+class FreeSASA(PluginBase):
   is_ready = False
-  plugin_name = "AlphaFold"
+  plugin_name = "FreeSASA"
   process = ['analysis']
-  url = "https://alphafoldserver.com"
-
-  Receptors = None
-  Ligands = None
+  url = "https://freesasa.github.io/"
 
   def __init__(self, *args, **kwargs):
     super().__init__(**kwargs)
@@ -19,6 +16,7 @@ class AlphaFold(PluginBase):
 
   def boot(self, *args, **kwargs):
     self.setup(*args, **kwargs)
+
 
   def run(self, *args, **kwargs):
     ...
