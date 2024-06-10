@@ -16,7 +16,7 @@ class Molecule(MoleculeBase):
   def parse_additional_attributes(self) -> None:
     _other_attribs = {
       "mol_ext": self.mol_path.ext(),
-      "mol_file_size": self.mol_path.size(),
+      "mol_file_size": self.mol_path.size,
 
       # "n_models": 0,
       # "n_molecules": 0,
@@ -31,7 +31,9 @@ class Molecule(MoleculeBase):
       "is_gz": None,
       "mol_type": None,
       "mol_format": None,
+      "mol_hash": self.mol_path.hash,
     }
+
     _mol_path = self.mol_path
 
     if '.gz' in _mol_path.suffixes:

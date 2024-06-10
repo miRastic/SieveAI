@@ -1,11 +1,12 @@
 
-from .base import PluginBase
-from ..managers import Structures
 from ..plug import StepManager
+from ..managers import Structures
+from .base import PluginBase
 
 class HDockLite(PluginBase):
   is_ready = False
-  plugin_name = "HDockLite"
+  plugin_name = "HDockLite (v Unknown)"
+  plugin_uid = "HDockLite"
   process = ['docking']
   url = "http://hdock.phys.hust.edu.cn/"
 
@@ -25,9 +26,9 @@ class HDockLite(PluginBase):
     self.path_table = None
     self.path_update = None
 
-    self.path_plugin_res = (self.path_base / 'docking' / self.plugin_name).validate()
-    self.path_update = (self.path_plugin_res / self.plugin_name).with_suffix('.pkl.gz')
-    self.path_excel_results = (self.path_base / self.plugin_name ).with_suffix('.Results.xlsx')
+    self.path_plugin_res = (self.path_base / 'docking' / self.plugin_uid).validate()
+    self.path_update = (self.path_plugin_res / self.plugin_uid).with_suffix('.pkl.gz')
+    self.path_excel_results = (self.path_base / self.plugin_uid ).with_suffix('.Results.xlsx')
     self._restore_progress()
 
     self._steps_map_methods = {
@@ -46,8 +47,8 @@ class HDockLite(PluginBase):
 
   def boot(self, *args, **kwargs):
     self.setup(*args, **kwargs)
-    self.Receptors = Structures(self.settings.base.path_receptors, '*.pdb', 'macromolecule')
-    self.Ligands = Structures(self.settings.base.path_ligands, '*.pdb', 'macromolecule')
+    self.Receptors = Structures(self.SETTINGS.user.path_receptors, '*.pdb', 'macromolecule')
+    self.Ligands = Structures(self.SETTINGS.user.path_ligands, '*.pdb', 'macromolecule')
 
   def _restore_progress(self, *args, **kwargs):
     if self.path_update.exists():
@@ -79,7 +80,7 @@ class HDockLite(PluginBase):
     return int(_number)
 
   def _run_analysis(self, cuid):
-    _VPY = self.settings.exe.plugin_refs.analysis.vmdpython()
+    _VPY = self.SETTINGS.plugin_refs.analysis.vmdpython()
 
     *_models, = list(self.Complexes[cuid].path_docking.search('model*'))
     _models.sort(key=self._fn_sort_model)
@@ -100,7 +101,7 @@ class HDockLite(PluginBase):
     self.log_debug(f'{cuid}:: Conformer Results Generated')
 
     _df_conformer_scores = self.DF(_model_results)
-    _df_conformer_scores['plugin'] = self.plugin_name
+    _df_conformer_scores['plugin'] = self.plugin_uid
     self.Complexes[cuid].conformer_scores = _df_conformer_scores
 
   def _run_preprocess_check(self, cuid):
@@ -108,20 +109,6 @@ class HDockLite(PluginBase):
 
   def _finalise_complex(self, cuid):
     return cuid
-
-  def status(self, cuid=None):
-    _status = None
-    if not cuid is None and cuid in self.Complexes:
-      _status = self.Complexes[cuid].step.current
-    else:
-      _status = []
-      for _idx, _item in self.Complexes.items():
-        if not isinstance(_item, (dict)):
-          continue
-
-        _status.append((_idx, _item.step.current))
-
-    return _status
 
   def _process_complex(self, cuid):
     if cuid in self.Complexes:
@@ -248,6 +235,7 @@ class HDockLite(PluginBase):
     return _all_res, _top_res
 
   _df_results = None
+  _df_top_ranked = None
   def _tabulate_results(self, *args, **kwargs):
     while self.queue_running > 0:
       self.log_debug()
@@ -267,9 +255,9 @@ class HDockLite(PluginBase):
         _score_table = self.PD.concat([_score_table, _cmplx.conformer_scores])
 
     # Save conformers and ranks as excel
-    self._df_results, _top_ranked = self._rank_conformers(_score_table)
-    self.pd_excel(self.path_excel_results, self._df_results, sheet_name=f"{self.plugin_name}-All-Ranked")
-    self.pd_excel(self.path_excel_results, _top_ranked, sheet_name=f"{self.plugin_name}-Top-Ranked")
+    self._df_results, self._df_top_ranked = self._rank_conformers(_score_table)
+    self.pd_excel(self.path_excel_results, self._df_results, sheet_name=f"{self.plugin_uid}-All-Ranked")
+    self.pd_excel(self.path_excel_results, self._df_top_ranked, sheet_name=f"{self.plugin_uid}-Top-Ranked")
 
   def shutdown(self, *args, **kwargs):
     # Prepare HTML server for visualisation of results

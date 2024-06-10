@@ -6,4 +6,4 @@ class Compound(Molecule):
       'mol_cat': 'compound',
     }
     _defaults.update(kwargs)
-    self.update(_defaults)
+    super().__init__(*args, **_defaults)

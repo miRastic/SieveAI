@@ -1,30 +1,14 @@
-from ..plug import DictConfig
 from .base import ManagerBase
+from collections.abc import Mapping
 
 class ConfigManager(ManagerBase):
   def __init__(self, *args, **kwargs):
     super().__init__(**kwargs)
-    self.__set_defaults()
-    self.__process_config()
-
-  def __process_config(self) -> None:
-    if self.settings.base.path_receptors is None:
-      self.settings.base.path_receptors = self.get_path(self.settings.base.dir_receptors)
-
-    if self.settings.base.path_ligands is None:
-      self.settings.base.path_ligands = self.get_path(self.settings.base.dir_ligands)
-
-    if self.settings.base.path_docking is None:
-      self.settings.base.path_docking = self.get_path(self.settings.base.dir_docking)
-
-    if self.settings.base.path_analysis is None:
-      self.settings.base.path_analysis = self.get_path(self.settings.base.dir_analysis)
-
-    if self.settings.base.path_results is None:
-      self.settings.base.path_results = self.get_path(self.settings.base.dir_results)
+    self._init_config()
 
   def __set_defaults(self):
-    _common_vars = {
+
+    _user_vars = {
       'path_base': None,
 
       'path_receptors': None,
@@ -38,24 +22,93 @@ class ConfigManager(ManagerBase):
       'dir_docking': 'docking',
       'dir_results': 'results',
       'dir_plots': 'plots',
+
+      'file_user_config': 'config.user.toml',
+      'file_sob': 'settings.sob',
+
+      'path_user_toml': None,
+      'path_sob': None,
     }
 
-    _executables = DictConfig()
+    # User Settings with String/EntityPath Only
+    self.SETTINGS.user.update(_user_vars)
+    self.SETTINGS.user.plugin_list.docking = ['hdocklite']
+    self.SETTINGS.user.plugin_list.analysis = ['vmdpython', 'chimerax']
 
-    _executables.plugin_refs.docking = DictConfig()
-    _executables.plugin_refs.analysis = DictConfig()
+    # Other settings to be stored in compressed format
+    self.SETTINGS.plugin_refs.docking = self.ObjDict()
+    self.SETTINGS.plugin_refs.analysis = self.ObjDict()
+    self.SETTINGS.plugin_data = self.ObjDict()
 
-    _executables.plugin_list.docking = ['hdocklite']
-    _executables.plugin_list.analysis = ['vmdpython', 'chimerax']
+  def __process_config(self) -> None:
+    if self.SETTINGS.user.path_receptors is None:
+      self.SETTINGS.user.path_receptors = self.get_path(self.SETTINGS.user.dir_receptors)
 
-    # Aggregators
-    self.settings.structures = []
-    self.settings.base.update(_common_vars)
-    self.settings.exe.update(_executables)
-    self.settings.plugin_data = DictConfig()
+    if self.SETTINGS.user.path_ligands is None:
+      self.SETTINGS.user.path_ligands = self.get_path(self.SETTINGS.user.dir_ligands)
 
-  def _read_config(self, *args, **kwargs):
-    pass
+    if self.SETTINGS.user.path_docking is None:
+      self.SETTINGS.user.path_docking = self.get_path(self.SETTINGS.user.dir_docking)
+
+    if self.SETTINGS.user.path_analysis is None:
+      self.SETTINGS.user.path_analysis = self.get_path(self.SETTINGS.user.dir_analysis)
+
+    if self.SETTINGS.user.path_results is None:
+      self.SETTINGS.user.path_results = self.get_path(self.SETTINGS.user.dir_results)
+
+    if self.SETTINGS.user.path_sob is None:
+      self.SETTINGS.user.path_sob = self.get_path(self.SETTINGS.user.file_sob)
+
+    if self.SETTINGS.user.path_user_toml is None:
+      self.SETTINGS.user.path_user_toml = self.get_path(self.SETTINGS.user.file_user_config)
+
+  config_requires_user_update = False
+
+  def _val_casting(self, _v1, _v2):
+    if isinstance(_v1, (Mapping)):
+      for _k, _v in _v1.items():
+        _v2[_k] = self._val_casting(_v, _v2[_k]) if _k in _v2 else None
+      return _v2
+    else:
+      return type(_v1)(_v2)
+
+  def _map_user_config_data_type(self, _toml_config):
+    _updated_toml = self._val_casting(self.SETTINGS, _toml_config)
+
+    self.SETTINGS.user.update(_updated_toml.get('user', {}))
+
+  def _sync_user_config(self):
+    if self.SETTINGS.user.path_user_toml.exists() and self.SETTINGS.user.path_user_toml.size > 0:
+      _u_config = self.read_toml(self.SETTINGS.user.path_user_toml)
+
+      _original_config_toml = self.convert_to_toml_obj({'user': self.SETTINGS.user})
+      _u_config_toml = self.convert_to_toml_obj(_u_config)
+
+      if _original_config_toml == _u_config_toml:
+        self.config_requires_user_update = False
+      else:
+        # self.SETTINGS.update(_u_config)
+        self._map_user_config_data_type(_u_config)
+
+        # Save the settings
+        self.config_requires_user_update = True
+    else:
+      self.write_toml(self.SETTINGS.user.path_user_toml, {'user': self.SETTINGS.user})
+      self.log_info('No user configuration was found. We have generated a user configuration. If required update it and rerun the program.')
+      self.config_requires_user_update = True
+
+  def _init_config(self, *args, **kwargs):
+    self.__set_defaults()
+    self.__process_config()
+
+    if self.SETTINGS.user.path_sob.exists() and self.SETTINGS.user.path_sob.size > 0:
+      _s = self.unpickle(self.SETTINGS.user.path_sob)
+
+      self.SETTINGS.update(_s)
+
+    self._sync_user_config()
+
+    self._write_config()
 
   def _write_config(self, *args, **kwargs):
-    pass
+    self.pickle(self.SETTINGS.user.path_sob, self.SETTINGS)

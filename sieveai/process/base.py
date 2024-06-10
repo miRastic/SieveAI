@@ -6,11 +6,15 @@ class CoreBase(SieveAIBase):
 
   def process(self, *args, **kwargs):
     self.update_attributes(self, kwargs)
-    if self.settings.base.path_base:
-      self.path_base = self.settings.base.path_base
+    if self.SETTINGS.user.path_base:
+      self.path_base = self.SETTINGS.user.path_base
 
-    for _plugin_name, _PluginClass in (self.settings.exe.plugin_refs.docking or {}).items():
-      self.settings.plugin_data[_plugin_name] = _PluginClass(path_base=self.path_base, settings=self.settings)
-      self.settings.plugin_data[_plugin_name].boot()
-      self.settings.plugin_data[_plugin_name].run()
-      self.settings.plugin_data[_plugin_name].shutdown()
+    for _plugin_name, _PluginClass in (self.SETTINGS.plugin_refs.docking or {}).items():
+      if _plugin_name.startswith('_'):
+        # ISSUE: DictConfig.__private_keys
+        continue
+
+      self.SETTINGS.plugin_data[_plugin_name] = _PluginClass(path_base=self.path_base, SETTINGS=self.SETTINGS)
+      self.SETTINGS.plugin_data[_plugin_name].boot()
+      self.SETTINGS.plugin_data[_plugin_name].run()
+      self.SETTINGS.plugin_data[_plugin_name].shutdown()

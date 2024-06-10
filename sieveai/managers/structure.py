@@ -9,6 +9,7 @@ class Structures():
     'mol': 'MOL',
     'lig': 'LIG',
   }
+
   mol_type_map = {
       'molecule': Molecule,
       'macromolecule': MacroMolecule,
@@ -55,26 +56,15 @@ class Structures():
 
   len = __len__
 
+  @property
   def items(self):
     return list(self.molecules.items())
 
   def keys(self):
     return list(self.molecules.keys())
 
-  ids = keys
-  mol_ids = keys
+  @property
+  def ids(self):
+    return self.keys()
 
-  def parse_pdb(self, *args, **kwargs):
-    return None
-    if not self.mol_structure is None:
-      return
-    # _biopython = [SieveAIBaseInit.require('Bio', 'BioPy'), SieveAIBaseInit.require('Bio.PDB', 'BioPDB')]
-    # if all(_biopython) and self.mol_ext == 'pdb':
-    #   try:
-    #     _parser = SieveAIBaseInit.BioPDB.PDBParser(QUIET=True)
-    #     self.mol_pdb = _parser.get_structure(self.mol_id, self.mol_path)
-    #     # List models/molecules, chains, residues, atoms
-    #   except Exception as _e:
-    #     self.mol_error = f'Error in accessing molecule {self.mol_id}: {_e}'
-    # else:
-    #   ...
+  mol_ids = ids

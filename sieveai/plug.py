@@ -8,7 +8,9 @@ class SieveAIBase(ProjectManager):
   name = 'SieveAI'
   version = __version__
   ObjDict = DictConfig
-  settings = DictConfig()
+  SETTINGS = DictConfig()
   path_base = None
+  multiprocessing = True
+
   def __init__(self, *args, **kwargs):
     super().__init__(**kwargs)
