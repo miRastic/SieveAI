@@ -6,8 +6,6 @@ class Manager(ConfigManager):
 
   def __init__(self, *args, **kwargs):
     super().__init__(**kwargs)
-    if not self.config_requires_user_update:
-      self.log_info('Requires config update')
 
   # Manage commandline operations
   def _update_cli_args(self):
@@ -48,10 +46,6 @@ class Manager(ConfigManager):
     from ..process.process import Process
     self.SETTINGS.user.update(kwargs)
 
-    if not self.require_config_review:
-      self.log_info('We have generated a configuration file for you. Please check the configuration file and rerun. This is an expected behavior.')
-      return None
-
     if self.SETTINGS.user.path_base:
       self.path_base = self.SETTINGS.user.path_base
 
@@ -78,6 +72,9 @@ class Manager(ConfigManager):
 
   def cli_dock(self):
     self._update_cli_args()
+    if self.require_config_review:
+      self.log_info('We have generated a configuration file for you. Please check the configuration file and rerun. This is an expected behavior.')
+      return None
     self.handle_docking()
 
   # Manage web operation

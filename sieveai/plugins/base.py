@@ -1,4 +1,4 @@
-from ..plug import SieveAIBase
+from ..plug import SieveAIBase, DictConfig
 
 class PluginBase(SieveAIBase):
   is_ready = False

@@ -23,11 +23,8 @@ class HDockLite(PluginBase):
     self.Receptors = None
     self.Ligands = None
 
-    self.path_table = None
-    self.path_update = None
-
     self.path_plugin_res = (self.path_base / 'docking' / self.plugin_uid).validate()
-    self.path_update = (self.path_plugin_res / self.plugin_uid).with_suffix('.pkl.gz')
+    self.path_update = (self.path_base / 'docking' / self.plugin_uid).with_suffix('.config.sob')
     self.path_excel_results = (self.path_base / self.plugin_uid ).with_suffix('.Results.xlsx')
     self._restore_progress()
 
@@ -138,8 +135,6 @@ class HDockLite(PluginBase):
 
     self._hdock_exe = self.which(self._hdock_exe_name)
 
-    self.path_table = self.path_plugin_res.with_suffix('.pkl.gz')
-
     if not self._hdock_exe:
       self.log_error(f'{self._hdock_exe_name} executable is not found. Please provide the executable command or path to executable file.')
       return
@@ -157,7 +152,6 @@ class HDockLite(PluginBase):
         self.Complexes[_complex_uid] = self.ObjDict()
 
         _complex_path = (self.path_plugin_res / _complex_uid).validate()
-        _complex_log_path = _complex_path / f'{_complex_uid}.log'
 
         # Copy _path
         _c_rec = _complex_path / f'REC{_rec.mol_path.suffix}'
@@ -173,7 +167,7 @@ class HDockLite(PluginBase):
             "REC": _c_rec,
             "LIG": _c_lig,
             "path_docking": _complex_path,
-            "path_log": _complex_log_path,
+            "path_log": _complex_path / f'{_complex_uid}.log',
           })
 
         self.log_debug(f'{_complex_uid}:: Queued.')

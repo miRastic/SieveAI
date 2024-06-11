@@ -1,10 +1,27 @@
 
-from ..plug import StepManager
+from ..plug import StepManager, DictConfig
 from ..managers import Structures
+from ..managers.plugin import PluginManager
 from .base import PluginBase
 
 # Python binding for AutoDock VINA
-from vina import Vina
+from vina import Vina as VinaPy
+
+Vina_config = DictConfig()
+Vina_config.exhaustiveness = 30
+Vina_config.verbosity = 2
+Vina_config.center_x = None
+Vina_config.center_y = None
+Vina_config.center_z = None
+Vina_config.size_x = None
+Vina_config.size_y = None
+Vina_config.size_z = None
+Vina_config.out = None
+Vina_config.cpu = None
+Vina_config.log = None
+Vina_config.seed = 411033
+Vina_config.num_modes = None
+Vina_config.energy_range = None
 
 class Vina(PluginBase):
   is_ready = False
@@ -13,7 +30,11 @@ class Vina(PluginBase):
   process = ['docking']
   url = "https://autodock-vina.readthedocs.io/en/latest/docking_python.html"
 
-  _max_conformers = 10
+  default_config = Vina_config
+
+  _max_conformers = 3
+
+  path_vina_exe = None
 
   def __init__(self, *args, **kwargs):
     super().__init__(**kwargs)
@@ -27,14 +48,21 @@ class Vina(PluginBase):
     self.pickle(self.path_pkl_progress, self.Complexes)
 
   def _run_docking(self, cuid):
-    """Runs hdock and hdockpl to perform docking and later extact the complexes.
-    """
-    # _log = self.cmd_run(self._hdock_exe_name, self.Complexes[cuid].REC.name, self.Complexes[cuid].LIG.name, **{
-    #   'out': f"{cuid}.out",
-    #   'cwd': self.Complexes[cuid].path_docking
-    # })
+    """Runs vina command."""
+    _cuid_c = self.Complexes[cuid]
+    _config = {"-cpu": "4",
+            "-receptor": _cuid_c.path_rec_pdbqt,
+            "-config": _cuid_c.path_rec_config,
+            "-ligand": _cuid_c.path_lig_pdbqt,
+            "-exhaustiveness": self.default_config.exhaustiveness,
+            "-out": _cuid_c.path_result_pdbqt,
+            "-verbosity": self.default_config.verbosity,
+            "cwd": self.Complexes[cuid].path_docking
+            # "-log": _log_path
+          }
 
-    # self.Complexes[cuid].path_log.write(str(_log))
+    _log = self.cmd_run_mock(self.path_vina_exe, **_config)
+    _cuid_c.path_log.write(str(_log))
 
   def _run_extraction(self, cuid):
 
@@ -76,10 +104,12 @@ class Vina(PluginBase):
     self.update_attributes(self, kwargs)
 
     self.path_plugin_res = (self.path_base / 'docking' / self.plugin_uid).validate()
-    self.path_pkl_molecules = (self.path_plugin_res / self.plugin_uid).with_suffix('.Structures.pkl.gz')
-    self.path_pkl_progress = (self.path_plugin_res / self.plugin_uid).with_suffix('.pkl.gz')
+    self.path_pkl_molecules = (self.path_base / 'docking' / self.plugin_uid).with_suffix('.Structures.sob')
+    self.path_pkl_progress = (self.path_base / 'docking' / self.plugin_uid).with_suffix('.config.sob')
     self.path_excel_results = (self.path_base / self.plugin_uid ).with_suffix('.Results.xlsx')
     self._restore_progress()
+
+    self.path_vina_exe = self.which('vina')
 
     self._steps_map_methods = {
       "init": self._prepare_molecules,
@@ -152,9 +182,9 @@ class Vina(PluginBase):
         self.Complexes[_complex_uid] = self.ObjDict()
 
         _complex_path = (self.path_plugin_res / _complex_uid).validate()
-        _complex_log_path = _complex_path / f'{_complex_uid}.log'
 
-        # Copy _path
+        # Convert mol_path to PDBQT using meeko/OpenBabel???
+
         _c_rec = _complex_path / f'REC{_rec.mol_path.suffix}'
         _c_lig = _complex_path / f'LIG{_lig.mol_path.suffix}'
 
@@ -168,7 +198,7 @@ class Vina(PluginBase):
             "REC": _c_rec,
             "LIG": _c_lig,
             "path_docking": _complex_path,
-            "path_log": _complex_log_path,
+            "path_log": _complex_path / f'{_complex_uid}.log',
           })
 
         self.log_debug(f'{_complex_uid}:: Queued.')
@@ -208,9 +238,13 @@ class Vina(PluginBase):
     self.pd_excel(self.path_excel_results, self._df_results, sheet_name=f"{self.plugin_uid}-All-Ranked")
     self.pd_excel(self.path_excel_results, _top_ranked, sheet_name=f"{self.plugin_uid}-Top-Ranked")
 
-
   def run(self, *args, **kwargs):
-    self._queue_complexes()
+    # Setting molecular formats
+    _open_babel = PluginManager.share_plugin('openbabel')()
+    self.Receptors.set_format('pdbqt', converter=_open_babel.convert)
+    self.Ligands.set_format('pdbqt', converter=_open_babel.convert)
+
+    # self._queue_complexes()
 
   def shutdown(self, *args, **kwargs):
     ...
