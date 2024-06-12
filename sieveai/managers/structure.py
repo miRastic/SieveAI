@@ -5,9 +5,7 @@ class Structures():
     'pdb': 'PDB',
     'pdbqt': 'PDBQT',
     'sdf': 'SDF',
-    'mol2': 'MOL2',
-    'mol': 'MOL',
-    'lig': 'LIG',
+
   }
 
   mol_type_map = {
@@ -65,6 +63,12 @@ class Structures():
     print(path_source, ext_source, path_target, ext_target)
     return path_target
 
+  def set_mol_attribute(self, attr_key='attr', method=None) -> None:
+    if not callable(method):
+      return
+    for _mol_id, _mol_obj in self.items:
+      self[_mol_id][attr_key] = method(_mol_obj)
+
   def set_format(self, ext='pdbqt', mol_id=None, converter=None, **kwargs) -> None:
     ext = str(ext).strip('.')
     _conversion_method_maps = {
@@ -78,16 +82,21 @@ class Structures():
 
     _items = []
     if mol_id:
-      _items.append((mol_id,  self[mol_id]))
+      _items.append((mol_id, self[mol_id]))
     else:
       _items =  self.items
 
     for _mol_id, _mol_obj in _items:
+      _format_key = f"mol_path_{ext}"
+
+      if _format_key in _mol_obj and _mol_obj[_format_key].exists():
+        continue
+
       _target_path = _mol_obj.mol_path.with_suffix(f".{ext}")
       _target_path.parents[0].validate()
-      self[_mol_id][f"mol_path_{ext}"] = _method(_mol_obj.mol_path, _target_path,
-                                             _mol_obj.mol_ext.strip('.'), ext, **kwargs)
-
+      _method(_mol_obj.mol_path, _target_path,
+              _mol_obj.mol_ext.strip('.'), ext, **kwargs)
+      self[_mol_id][f"mol_path_{ext}"] = _target_path
 
     return True
 

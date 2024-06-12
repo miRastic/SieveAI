@@ -36,7 +36,7 @@ class OpenBabel(PluginBase):
 
     _obc.WriteFile(_mol, _path_target)
 
-  def convert(self, *args, **kwargs):
+  def py_convert(self, *args, **kwargs):
     _path_source = kwargs.get('path_source', args[0] if len(args) > 0 else None)
     _path_target = kwargs.get('path_target', args[1] if len(args) > 1 else None)
 
@@ -58,3 +58,18 @@ class OpenBabel(PluginBase):
       _mol.AddHydrogens()
 
     _obc.WriteFile(_mol, str(_path_target))
+
+  def bulk_convert(self, *args, **kwargs):
+    # Use multiprocess
+    pass
+
+  def convert(self, *args, **kwargs):
+    _path_source = kwargs.get('path_source', args[0] if len(args) > 0 else None)
+    _path_target = kwargs.get('path_target', args[1] if len(args) > 1 else None)
+
+    _res = self.cmd_run("obabel",
+                             str(_path_source),
+                             "-O", str(_path_target),
+                             "-h", "--quiet")
+
+    return _res

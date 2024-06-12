@@ -58,12 +58,13 @@ class HDockLite(PluginBase):
   def _run_hdock_main(self, cuid):
     """Runs hdock and hdockpl to perform docking and later extact the complexes.
     """
-    _log = self.cmd_run(self._hdock_exe_name, self.Complexes[cuid].REC.name, self.Complexes[cuid].LIG.name, **{
+    _cmplx = self.Complexes[cuid]
+    _log = self.cmd_run(self._hdock_exe_name, _cmplx.path_receptor.name, _cmplx.path_ligand.name, **{
       'out': f"{cuid}.out",
-      'cwd': self.Complexes[cuid].path_docking
+      'cwd': _cmplx.path_docking
     })
 
-    self.Complexes[cuid].path_log.write(str(_log))
+    _cmplx.path_log.write(str(_log))
 
   def _run_hdock_pl(self, cuid):
     """Runs hdock and hdockpl to perform docking and later extact the complexes.
@@ -164,8 +165,8 @@ class HDockLite(PluginBase):
             "step": StepManager(self._step_sequence),
             "steps_completed": [],
             "uid": _complex_uid,
-            "REC": _c_rec,
-            "LIG": _c_lig,
+            "path_receptor": _c_rec,
+            "path_ligand": _c_lig,
             "path_docking": _complex_path,
             "path_log": _complex_path / f'{_complex_uid}.log',
           })
@@ -178,11 +179,11 @@ class HDockLite(PluginBase):
         self._process_complex(_complex_uid)
 
     self._update_progress()
-    self.process_queue()
-    self.queue_final_callback(self._tabulate_results)
 
   def run(self, *args, **kwargs):
     self._queue_complexes()
+    self.process_queue()
+    self.queue_final_callback(self._tabulate_results)
 
   def _rank_conformers(self, _all_res):
     _ranking_columns = {

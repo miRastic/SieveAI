@@ -8,7 +8,7 @@ class PluginManager:
     'openbabel': 'OpenBabel',
     'vmdpython': 'VMDPython',
     'annapurna': 'AnnapuRNA',
-    'meeko': 'Meeko',
+    'mgltools': 'MGLTools',
   }
   def __init__(self, *args, **kwargs):
     pass
