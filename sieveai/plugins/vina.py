@@ -78,18 +78,37 @@ class Vina(PluginBase):
   def _run_docking(self, cuid):
     """Runs vina command."""
     _cuid_c = self.Complexes[cuid]
-    _config = {"-cpu": "4",
-            "-receptor": _cuid_c.path_receptor,
-            "-config": _cuid_c.path_vina_config,
-            "-ligand": _cuid_c.path_ligand,
-            "-out": _cuid_c.path_out,
-            "-verbosity": self.Vina_config.default.get('verbosity', 2),
-            "cwd": _cuid_c.path_docking
-            # "-log": _cuid_c.path_log
+    _config = {
+            "--receptor": _cuid_c.path_receptor,
+            "--ligand": _cuid_c.path_ligand,
+            "--config": _cuid_c.path_vina_config,
+            "--out": _cuid_c.path_out,
+            "--verbosity": self.Vina_config.default.get('verbosity', 2),
+            "cwd": _cuid_c.path_docking,
+            ">": _cuid_c.path_log # from command line to file
           }
+    self.cmd_run(self.path_vina_exe, **_config)
 
-    _log = self.cmd_run(self.path_vina_exe, **_config)
-    _cuid_c.path_log.write(str(_log))
+  def _run_api_docking(self, cuid):
+    _vna = VinaPy(sf_name='vina')
+    _cuid_c = self.Complexes[cuid]
+    _vna.set_receptor(str(_cuid_c.path_receptor))
+
+    _vna.set_ligand_from_file(str(_cuid_c.path_ligand))
+    _vna.compute_vina_maps(center=_cuid_c.center, box_size=_cuid_c.box_size)
+
+    # Score the current pose
+    energy = _vna.score()
+    print('Score before minimization: %.3f (kcal/mol)' % energy[0])
+
+    # Minimized locally the current pose
+    energy_minimized = _vna.optimize()
+    print('Score after minimization : %.3f (kcal/mol)' % energy_minimized[0])
+    _vna.write_pose(str(_cuid_c.path_ligand).with_suffix('.min.pdbqt'), overwrite=True)
+
+    # Dock the ligand
+    _vna.dock(exhaustiveness=32, n_poses=20)
+    _vna.write_poses(str(_cuid_c.path_out), n_poses=5, overwrite=True)
 
   def _run_extraction(self, cuid):
 
@@ -143,7 +162,8 @@ class Vina(PluginBase):
     self._steps_map_methods = {
       "init": self._prepare_molecules,
       "config": self._write_receptor_vina_config,
-      "dock": self._run_docking,
+      # "dock": self._run_docking,
+      # "dock": self._run_api_docking,
       "extract": self._run_extraction,
       "analyse": self._run_analysis,
       "final": self._finalise_complex,
@@ -321,6 +341,9 @@ class Vina(PluginBase):
         "size_y": _size_y + _spacing,
         "size_z": _size_z + _spacing,
       }
+
+    self.Complexes[cuid].center = [_center_x, _center_y, _center_z]
+    self.Complexes[cuid].box_size = [_size_x + _spacing, _size_y + _spacing, _size_z + _spacing]
 
     _vina_config = {_k: _vina_config[_k] for _k in _vina_config if _k in self.Vina_config.allowed_keys}
 

@@ -1,11 +1,16 @@
 from ..entity import Molecule, Compound, MacroMolecule, RNA, DNA, Protein
+from Bio.PDB import PDBParser
+from rdkit import Chem
 
 class Structures():
   mol_formats = {
-    'pdb': 'PDB',
-    'pdbqt': 'PDBQT',
-    'sdf': 'SDF',
-
+    '.pdb': 'PDB',
+    '.pdbqt': 'PDBQT',
+    '.sdf': 'SDF',
+    # '.fasta': 'FASTA',
+    # '.fa': 'FASTA',
+    # '.mol2': 'MOL2',
+    # '.smi': 'MOL2',
   }
 
   mol_type_map = {
@@ -23,6 +28,17 @@ class Structures():
     self.type_molecules = kwargs.get('type_molecules', args[2] if len(args) > 2 else None)
     self.molecules = {}
     self._discover_molecules()
+
+  def _discover_molecules__dev(self):
+    # for _file in self.path_molecules.files:
+    # if self.path_molecules.exists():
+    #   _files
+    #   if not '*' in _ext:
+    #     _ext = f"*{_ext}"
+    #   for _file in self.path_molecules.search(_ext):
+    #     # Get unique ID instead of stem
+    #     self.molecules[_file.stem] = self.mol_type_map.get(self.type_molecules)(_file.stem, _file)
+    pass
 
   def _discover_molecules(self):
     if self.path_molecules.exists():

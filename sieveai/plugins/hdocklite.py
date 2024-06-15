@@ -60,8 +60,8 @@ class HDockLite(PluginBase):
     """
     _cmplx = self.Complexes[cuid]
     _log = self.cmd_run(self._hdock_exe_name, _cmplx.path_receptor.name, _cmplx.path_ligand.name, **{
-      'out': f"{cuid}.out",
-      'cwd': _cmplx.path_docking
+      '-out': f"{cuid}.out",
+      '-cwd': _cmplx.path_docking
     })
 
     _cmplx.path_log.write(str(_log))
