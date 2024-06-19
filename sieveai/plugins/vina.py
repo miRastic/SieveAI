@@ -28,6 +28,60 @@ class Vina(PluginBase):
     WARNINGS.simplefilter('ignore', PDBConstructionWarning)
     super().__init__(**kwargs)
 
+  def boot(self, *args, **kwargs) -> None:
+    self.update_attributes(self, kwargs)
+
+    self.path_plugin_res = (self.path_base / 'docking' / self.plugin_uid).validate().rel_path()
+    self.path_pkl_molecules = (self.path_base / 'docking' / self.plugin_uid).with_suffix('.Structures.sob').rel_path()
+    self.path_pkl_progress = (self.path_base / 'docking' / self.plugin_uid).with_suffix('.config.sob').rel_path()
+    self.path_excel_results = (self.path_base / self.plugin_uid ).with_suffix('.Results.xlsx').rel_path()
+
+    self.path_vina_exe = 'vina' # self.which('vina')
+
+    self.require('re', 'RegEx')
+    self.re_contacts = self.RegEx.compile(f"(\d+) contacts")
+
+    self._restore_progress()
+
+    self._set_defualt_config()
+
+    self._steps_map_methods = {
+      "init": self._prepare_molecules,
+      "config": self._write_receptor_vina_config,
+      "dock": self._run_docking,
+      # "dock": self._run_api_docking,
+      "analyse": self._run_analysis,
+      "final": self._finalise_complex,
+    }
+
+    self._step_sequence = tuple(self._steps_map_methods.keys())
+
+    if not self.path_pkl_molecules.exists():
+      self.log_debug('Running for the first time.')
+      self.Receptors = Structures(self.SETTINGS.user.path_receptors, ['protein', 'dna', 'rna'])
+      self.Ligands = Structures(self.SETTINGS.user.path_ligands, 'compound')
+      self.log_debug('Storing Molecules')
+      self._update_progress()
+
+    if not self.path_pkl_progress.exists():
+      self.Complexes = self.ObjDict()
+
+  def run(self, *args, **kwargs) -> None:
+    # Setting molecular formats
+    _mgltools = PluginManager.share_plugin('mgltools')()
+    self.Receptors.set_format('pdbqt', converter=_mgltools.prepare_receptor)
+
+    _openBabel = PluginManager.share_plugin('openbabel')()
+    self.Ligands.set_format('pdbqt', converter=_openBabel.convert)
+    self._queue_complexes()
+    self._update_progress()
+
+    self.process_queue()
+    self.queue_final_callback(self._tabulate_results)
+
+  def shutdown(self, *args, **kwargs) -> None:
+    ...
+
   def _restore_progress(self, *args, **kwargs):
     if self.path_pkl_progress.exists():
       _ci = self.unpickle(self.path_pkl_progress)
@@ -75,22 +129,6 @@ class Vina(PluginBase):
                   "cpu", "verbosity", # "seed",
                   "exhaustiveness", "num_modes", "energy_range"]
 
-  def _run_docking(self, cuid):
-    """Runs vina command."""
-    _cuid_c = self.Complexes[cuid]
-    _config = {
-            # "--cpu": 1,
-            "--receptor": _cuid_c.path_receptor.resolve(),
-            "--ligand": _cuid_c.path_ligand.resolve(),
-            "--config": _cuid_c.path_vina_config.resolve(),
-            "--out": _cuid_c.path_out.resolve(),
-            # "--verbosity": self.Vina_config.default.get('verbosity', 2),
-            "cwd": _cuid_c.path_docking.resolve(),
-            # ">": _cuid_c.path_log.resolve() # from command line to file
-          }
-    _result = self.cmd_run(self.path_vina_exe, **_config)
-    _cuid_c.path_log.write_text(_result)
-
   def _run_api_docking(self, cuid):
     _vna = VinaPy(sf_name='vina')
     _cuid_c = self.Complexes[cuid]
@@ -112,76 +150,142 @@ class Vina(PluginBase):
     _vna.dock(exhaustiveness=32, n_poses=20)
     _vna.write_poses(str(_cuid_c.path_out), n_poses=5, overwrite=True)
 
-  def _run_extraction(self, cuid):
+  def _run_docking(self, cuid) -> None:
+    """Runs vina command."""
+    _cuid_c = self.Complexes[cuid]
 
-    pass
+    if _cuid_c.path_out.exists():
+      return
+
+    _config = {
+            # "--cpu": 1,
+            "--receptor": _cuid_c.path_receptor.resolve(),
+            "--ligand": _cuid_c.path_ligand.resolve(),
+            "--config": _cuid_c.path_vina_config.resolve(),
+            "--out": _cuid_c.path_out.resolve(),
+            # "--verbosity": self.Vina_config.default.get('verbosity', 2),
+            "cwd": _cuid_c.path_docking.resolve(),
+            # ">": _cuid_c.path_score.resolve() # from command line to file
+          }
+    _result = self.cmd_run(self.path_vina_exe, **_config)
+    _cuid_c.path_score.write_text(_result)
+
+  _score_headers = ["mode", "affinity", "rmsd_lb", "rmsd_ub"]
 
   def _run_analysis(self, cuid):
-    return
-    _VPY = self.SETTINGS.plugin_refs.analysis.vmdpython()
+    _cuid_c = self.Complexes[cuid]
+    if not _cuid_c.path_score.exists():
+      return
 
-    *_models, = list(self.Complexes[cuid].path_docking.search('model*'))
-    _models.sort(key=self._fn_sort_model)
+    _score = list(_cuid_c.path_score.readlines())
+    _score_flag = False
+    _score_records = []
+    for _res_line in _score:
+      if _score_flag and _res_line.startswith(" "):
+          _record = str(_res_line).split()
+          _record = [r.strip() for r in _record]
+          _score_records.append(_record)
 
-    _model_results = []
-    for _model in _models:
-      _vmd_id = _VPY.parse_molecule(str(_model))
-      _rec_obj = _VPY.get_atom_sel('chain A', _vmd_id)
-      _lig_obj = _VPY.get_atom_sel('chain B', _vmd_id)
+      if not _score_flag and _res_line.startswith("-----+------------+----------+----------"):
+        _score_flag = True
 
-      _lines = list(_model._read_lines(num_lines=5))
-      _remarks = dict([_r[0] for _r in map(self.re_remarks.findall, _lines)])
-      _remarks['Complex_uid'] = cuid
-      _interactions = _VPY.get_interactions(_rec_obj, _lig_obj)
-      _remarks.update(_interactions)
-      _model_results.append(_remarks)
+    _df_score = self.DF(_score_records, columns=self._score_headers)
 
-    self.log_debug(f'{cuid}:: Conformer Results Generated')
+    _complex_commads = [
+      f"close;"
+      f"set bgColor white; open {_cuid_c.path_receptor.resolve()}; wait; hide surfaces; hide atoms; show cartoons; wait;"
+      "addh;",
+      "~sel;",
+      "wait;",
+      f"open {_cuid_c.path_out.resolve()}; wait;",
+    ]
 
-    _df_conformer_scores = self.DF(_model_results)
-    _df_conformer_scores['plugin'] = self.plugin_uid
-    self.Complexes[cuid].conformer_scores = _df_conformer_scores
+    _models = _df_score['mode'].tolist()
+
+    _cuid_c.path_cxc_cmd = (_cuid_c.path_docking / 'analysis.cxc').rel_path()
+    _file_template_cxc_contacts = 'CXC-Result-Model-%s.contacts.txt'
+    _file_template_cxc_hbonds = 'CXC-Result-Model-%s.hbonds.txt'
+
+    for _model_id in _models:
+      _path_contacts = (_cuid_c.path_docking / (_file_template_cxc_contacts % _model_id)).resolve()
+      if _path_contacts.exists(): continue
+
+      _complex_commads.extend([
+        f"# MODEL-NO-{_model_id}",
+        "hide #!2.1-%s target m;" % (len(_models)),
+        f"show #!2.{_model_id} models;",
+        f"view;",
+        f"sel #!2.{_model_id};", # Select the model
+        f"contacts (#1 & ~hbonds) restrict sel radius 0.05 log t saveFile {_path_contacts};",
+        f"wait;",
+        f"hb #1 restrict sel reveal t show t select t radius 0.05 log t saveFile {(_cuid_c.path_docking / (_file_template_cxc_hbonds % _model_id)).resolve()};",
+        f"wait;",
+        "label sel residues text {0.name}-{0.number} height 1.5 offset -2,0.25,0.25 bgColor #00000099 color white;",
+        f"~sel;",
+        # f"save {self.path_analysis}/{_comp}--{_model_id}.complex.png width 1200 height 838 supersample 4 transparentBackground true;",
+        f"sel #!2.{_model_id};", # Select the model
+        f"view sel;",
+        f"~sel;",
+        # f"save {self.path_analysis}/{_comp}--{_model_id}.ligand.png width 1200 height 838 supersample 4 transparentBackground true;",
+        f"turn x 45;",
+        # f"save {self.path_analysis}/{_comp}--{_model_id}.T45.ligand.png width 1200 height 838 supersample 4 transparentBackground true;",
+        f"\n",
+      ])
+
+    _complex_commads.extend([
+        f"exit;",
+      ])
+
+    _cuid_c.path_cxc_cmd.write_text("\n".join(_complex_commads))
+
+    _CX =  self.SETTINGS.plugin_refs.analysis.chimerax()
+
+    _CX.exe_cxc_file(_cuid_c.path_cxc_cmd.resolve())
+
+    _summary = []
+    for _model_id in _models:
+      _contacts_df = _CX.parse_contacts((_cuid_c.path_docking / (_file_template_cxc_contacts % _model_id)).resolve())
+      _hbonds_df = _CX.parse_hbonds((_cuid_c.path_docking / (_file_template_cxc_hbonds % _model_id)).resolve())
+
+      self.Complexes[cuid][f'Model_{_model_id}'].contacts = _contacts_df
+      self.Complexes[cuid][f'Model_{_model_id}'].hbonds = _hbonds_df
+
+      _contacts, _hbonds = [], []
+      NoneType = type(None)
+      if not isinstance(_contacts_df, NoneType):
+        _contacts = _contacts_df.copy()
+        _contacts["residues"] =  _contacts["atom1__resname"].astype(str) + ":" + _contacts["atom1__resid"].astype(str)
+        _contacts = _contacts["residues"].tolist()
+
+      _len_contacts = len(_contacts)
+      _contacts = ",".join(_contacts)
+
+      if not isinstance(_hbonds_df, NoneType):
+        _hbonds = _hbonds_df.copy()
+        _hbonds["residues"] =  _hbonds["donor__resname"].astype(str) + ":" + _hbonds["donor__resid"].astype(str)
+        _hbonds = _hbonds["residues"].tolist()
+
+      _len_hbonds = len(_hbonds)
+      _hbonds = ",".join(_hbonds)
+
+      _summary.append({
+        'mode': _model_id,
+        'total_contacts': _len_contacts,
+        'total_hbonds': _len_hbonds,
+        'contacts': _contacts,
+        'hbonds': _hbonds,
+      })
+
+    _df_summary = self.DF(_summary)
+    _df_score = self.PD.merge(_df_score, _df_summary, on='mode', how='outer')
+    # _df_score.columns = ['Conformer ID', 'VINA Score', 'RMSD LB', 'RMSD UB', 'Total Contacts', 'Total Hbonds', 'Contacts', 'Hbonds']
+    self.Complexes[cuid].vina_results = _df_score
 
   def _prepare_molecules(self, cuid):
     return cuid
 
   def _finalise_complex(self, cuid):
     return cuid
-
-  def boot(self, *args, **kwargs) -> None:
-    self.update_attributes(self, kwargs)
-
-    self.path_plugin_res = (self.path_base / 'docking' / self.plugin_uid).validate().rel_path()
-    self.path_pkl_molecules = (self.path_base / 'docking' / self.plugin_uid).with_suffix('.Structures.sob').rel_path()
-    self.path_pkl_progress = (self.path_base / 'docking' / self.plugin_uid).with_suffix('.config.sob').rel_path()
-    self.path_excel_results = (self.path_base / self.plugin_uid ).with_suffix('.Results.xlsx').rel_path()
-
-    self.path_vina_exe = 'vina' # self.which('vina')
-    self._restore_progress()
-
-    self._set_defualt_config()
-
-    self._steps_map_methods = {
-      "init": self._prepare_molecules,
-      "config": self._write_receptor_vina_config,
-      "dock": self._run_docking,
-      # "dock": self._run_api_docking,
-      "extract": self._run_extraction,
-      "analyse": self._run_analysis,
-      "final": self._finalise_complex,
-    }
-
-    self._step_sequence = tuple(self._steps_map_methods.keys())
-
-    if not self.path_pkl_molecules.exists():
-      self.log_debug('Running for the first time.')
-      self.Receptors = Structures(self.SETTINGS.user.path_receptors, ['protein', 'dna', 'rna'])
-      self.Ligands = Structures(self.SETTINGS.user.path_ligands, 'compound')
-      self.log_debug('Storing Molecules')
-      self._update_progress()
-
-    if not self.path_pkl_progress.exists():
-      self.Complexes = self.ObjDict()
 
   def _process_complex(self, cuid) -> None:
     if not cuid in self.Complexes:
@@ -202,7 +306,7 @@ class Vina(PluginBase):
       self.Complexes[cuid].steps_completed.append(_step)
       self._update_progress()
 
-  multiprocessing = False
+  multiprocessing = True
   def _queue_complexes(self) -> None:
     self.log_debug(f"Receptors: {self.Receptors}")
     self.log_debug(f"Ligands: {self.Ligands}")
@@ -251,7 +355,7 @@ class Vina(PluginBase):
             "path_ligand": _c_lig,
             "path_docking": _complex_path,
             "path_out": _complex_path / f'{_complex_uid}.out.pdbqt',
-            "path_log": _complex_path / f'{_complex_uid}.log',
+            "path_score": _complex_path / f'{_complex_uid}.vina.txt',
             "path_vina_config": _complex_path / f"{_complex_uid}.vina.config"
           })
 
@@ -262,29 +366,77 @@ class Vina(PluginBase):
       else:
         self._process_complex(_complex_uid)
 
+  def _rank_conformers(self, _all_res):
+    _ranking_columns = {
+        'affinity': True,
+        'total_contacts': False,
+        'total_hbonds': False,
+        'contacts': False,
+        'hbonds': False,
+      }
+
+    _all_res = _all_res.reset_index(drop=True)
+
+    _ranking_cols = []
+    for _rc, _rval in _ranking_columns.items():
+      _rc_rank_col = f"{_rc}__RANK"
+      _ranking_cols.append(_rc_rank_col)
+      _all_res[_rc] = self.PD.to_numeric(_all_res[_rc], errors='coerce')
+      _all_res[_rc] = _all_res[_rc].fillna(_all_res[_rc].mean())
+      _all_res[_rc_rank_col] = _all_res[_rc].rank(ascending=_rval)
+
+    _all_res['Final_Score'] = _all_res[_ranking_cols].sum(axis='columns')
+    _all_res = _all_res.sort_values('Final_Score')
+
+    _all_res = _all_res.drop(columns=_ranking_cols)
+    _all_res[list(_ranking_columns.keys())] = _all_res[list(_ranking_columns.keys())].round(4)
+
+    _reindexed_score = _all_res.Final_Score.reset_index(drop=True)
+    _all_res['Final_Rank'] = _reindexed_score.index + 1
+
+
+    _grouper = 'Complex UID'
+    _score_col = 'Final Score'
+
+    _all_res.columns = ['Conformer ID', 'VINA Score', 'RMSD LB', 'RMSD UB', 'Total Contacts', 'Total Hbonds', 'Contacts', 'Hbonds', 'Receptor ID', 'Ligand ID', _grouper, _score_col, 'Final Rank']
+
+    _top_res = _all_res.loc[_all_res.groupby(_grouper)[_score_col].idxmin()].copy()
+
+    _top_res = _top_res.reset_index(drop=True)
+    _top_res = _top_res[['Final Rank', 'Receptor ID', 'Ligand ID', 'Conformer ID', 'VINA Score', 'Total Contacts', 'Total Hbonds']].copy()
+
+    _top_res['Final Rank'] = _top_res.index + 1
+
+    # Top Results with Ranking
+    _top_res = _top_res.sort_values('Final Rank')
+
+    return _all_res, _top_res
+
   _df_results = None
   def _tabulate_results(self, *args, **kwargs):
     while self.queue_running > 0:
       self.log_debug()
-      self.time_sleep(30)
-
-    return True
+      self.time_sleep(60)
 
     self.require('pandas', 'PD')
 
     # Combine all the interactions
-    _score_table = None
+    _score_tables = []
     for _idx, _cmplx in self.Complexes.items():
-      if not isinstance(_cmplx, (dict)) or not 'conformer_scores' in _cmplx:
+      if str(_idx).startswith('_'): continue
+      if not all([isinstance(_cmplx, (dict)), 'vina_results' in _cmplx]):
         continue
 
-      if _score_table is None:
-        _score_table = _cmplx.conformer_scores
-      else:
-        _score_table = self.PD.concat([_score_table, _cmplx.conformer_scores])
+      _s = _cmplx.vina_results
+      _s['Receptor ID'] = _cmplx.rec_uid
+      _s['Ligand ID'] = _cmplx.lig_uid
+      _s['Complex_UID'] = _cmplx.uid
+      _score_tables.append(_s)
+
+    _score_tables = self.PD.concat(_score_tables)
 
     # Save conformers and ranks as excel
-    self._df_results, _top_ranked = self._rank_conformers(_score_table)
+    self._df_results, _top_ranked = self._rank_conformers(_score_tables)
     self.pd_excel(self.path_excel_results, self._df_results, sheet_name=f"{self.plugin_uid}-All-Ranked")
     self.pd_excel(self.path_excel_results, _top_ranked, sheet_name=f"{self.plugin_uid}-Top-Ranked")
 
@@ -351,21 +503,3 @@ class Vina(PluginBase):
     _vina_config_lines = "\n".join(_vina_config_lines + ["\n"])
 
     _config_path.write(_vina_config_lines)
-
-  def run(self, *args, **kwargs) -> None:
-    # Setting molecular formats
-    _mgltools = PluginManager.share_plugin('mgltools')()
-    self.Receptors.set_format('pdbqt', converter=_mgltools.prepare_receptor)
-
-    _openBabel = PluginManager.share_plugin('openbabel')()
-    self.Ligands.set_format('pdbqt', converter=_openBabel.convert)
-
-    self._queue_complexes()
-
-    self._update_progress()
-
-    # self.process_queue()
-    # self.queue_final_callback(self._tabulate_results)
-
-  def shutdown(self, *args, **kwargs) -> None:
-    ...

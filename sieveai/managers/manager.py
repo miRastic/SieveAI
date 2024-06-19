@@ -40,6 +40,7 @@ class Manager(ConfigManager):
       self.SETTINGS.plugin_refs[_plugin_type] = self.ObjDict()
 
     for _dp in self.SETTINGS.user.plugin_list[_plugin_type] or []:
+      if _dp.startswith('_'): continue
       self.SETTINGS.plugin_refs[_plugin_type][_dp] = self.get_plugin(_dp)
 
   def handle_docking(self, *args, **kwargs):

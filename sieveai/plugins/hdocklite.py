@@ -55,13 +55,12 @@ class HDockLite(PluginBase):
   def _update_progress(self, *args, **kwargs):
     self.pickle(self.path_update, self.Complexes)
 
-  def _run_hdock_main(self, cuid):
+  def _run_hdock_main(self, cuid) -> None:
     """Runs hdock and hdockpl to perform docking and later extact the complexes.
     """
     _cmplx = self.Complexes[cuid]
-    _log = self.cmd_run(self._hdock_exe_name, _cmplx.path_receptor.name, _cmplx.path_ligand.name, **{
+    _log = self.cmd_run(self._hdock_exe_name, _cmplx.path_receptor.name, _cmplx.path_ligand.name, cwd=_cmplx.path_docking, **{
       '-out': f"{cuid}.out",
-      '-cwd': _cmplx.path_docking
     })
 
     _cmplx.path_log.write(str(_log))
@@ -89,7 +88,7 @@ class HDockLite(PluginBase):
       _rec_obj = _VPY.get_atom_sel('chain A', _vmd_id)
       _lig_obj = _VPY.get_atom_sel('chain B', _vmd_id)
 
-      _lines = list(_model._read_lines(num_lines=5))
+      _lines = list(_model.readlines(num_lines=5))
       _remarks = dict([_r[0] for _r in map(self.re_remarks.findall, _lines)])
       _remarks['Complex_uid'] = cuid
       _interactions = _VPY.get_interactions(_rec_obj, _lig_obj)
@@ -165,6 +164,8 @@ class HDockLite(PluginBase):
             "step": StepManager(self._step_sequence),
             "steps_completed": [],
             "uid": _complex_uid,
+            "rec_uid": _rec.mol_id,
+            "lig_uid": _lig.mol_id,
             "path_receptor": _c_rec,
             "path_ligand": _c_lig,
             "path_docking": _complex_path,
@@ -178,10 +179,9 @@ class HDockLite(PluginBase):
       else:
         self._process_complex(_complex_uid)
 
-    self._update_progress()
-
   def run(self, *args, **kwargs):
     self._queue_complexes()
+    self._update_progress()
     self.process_queue()
     self.queue_final_callback(self._tabulate_results)
 
@@ -234,7 +234,7 @@ class HDockLite(PluginBase):
   def _tabulate_results(self, *args, **kwargs):
     while self.queue_running > 0:
       self.log_debug()
-      self.time_sleep(30)
+      self.time_sleep(60)
 
     self.require('pandas', 'PD')
 
