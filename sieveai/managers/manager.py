@@ -66,6 +66,7 @@ class Manager(ConfigManager):
       "queue": self.queue_task_status
     }
     for _idx, _item in self.SETTINGS.plugin_data.items():
+      if str(_idx).startswith('_'): continue
       _status[_idx] = _item.status
 
     return _status

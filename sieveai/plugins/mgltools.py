@@ -16,7 +16,8 @@ class MGLTools(PluginBase):
   def prepare_receptor(self, *args, **kwargs) -> None:
     _path_source = kwargs.get('path_source', args[0] if len(args) > 0 else None)
     _path_target = kwargs.get('path_target', args[1] if len(args) > 1 else None)
-    _path_log = kwargs.get('path_log', args[2] if len(args) > 2 else (self.path_base.log_file_path))
+    _path_log = kwargs.get('path_log', args[2] if len(args) > 2 else (self.path_target.with_suffix('.summary.log')))
+
     if not _path_target.exists():
       self.cmd_run(*[
           "prepare_receptor",
@@ -36,10 +37,13 @@ class MGLTools(PluginBase):
         '--pdb': _path_source,
         '-o': _path_target,
         '--box_size': "70 70 70",
+        'text': False,
+        'check': False,
+        'shellx': False,
       })
 
   def convert_pqbqt(self, *args, **kwargs):
-    _path_source = kwargs.get('path_source', args[0] if len(args) > 0 else None)
+    _source = kwargs.get('path_source', args[0] if len(args) > 0 else None)
     _path_target = kwargs.get('path_target', args[1] if len(args) > 1 else None)
 
     _format_to = kwargs.get('format_to', args[2] if len(args) > 2 else None)

@@ -42,25 +42,25 @@ class ConfigManager(ManagerBase):
 
   def __process_config(self) -> None:
     if self.SETTINGS.user.path_receptors is None:
-      self.SETTINGS.user.path_receptors = self.get_path(self.SETTINGS.user.dir_receptors)
+      self.SETTINGS.user.path_receptors = (self.path_base / self.SETTINGS.user.dir_receptors)
 
     if self.SETTINGS.user.path_ligands is None:
-      self.SETTINGS.user.path_ligands = self.get_path(self.SETTINGS.user.dir_ligands)
+      self.SETTINGS.user.path_ligands = (self.path_base / self.SETTINGS.user.dir_ligands)
 
     if self.SETTINGS.user.path_docking is None:
-      self.SETTINGS.user.path_docking = self.get_path(self.SETTINGS.user.dir_docking)
+      self.SETTINGS.user.path_docking = (self.path_base / self.SETTINGS.user.dir_docking)
 
     if self.SETTINGS.user.path_analysis is None:
-      self.SETTINGS.user.path_analysis = self.get_path(self.SETTINGS.user.dir_analysis)
+      self.SETTINGS.user.path_analysis = (self.path_base / self.SETTINGS.user.dir_analysis)
 
     if self.SETTINGS.user.path_results is None:
-      self.SETTINGS.user.path_results = self.get_path(self.SETTINGS.user.dir_results)
+      self.SETTINGS.user.path_results = (self.path_base / self.SETTINGS.user.dir_results)
 
     if self.SETTINGS.user.path_sob is None:
-      self.SETTINGS.user.path_sob = self.get_path(self.SETTINGS.user.file_sob)
+      self.SETTINGS.user.path_sob = (self.path_base / self.SETTINGS.user.file_sob)
 
     if self.SETTINGS.user.path_user_toml is None:
-      self.SETTINGS.user.path_user_toml = self.get_path(self.SETTINGS.user.file_user_config)
+      self.SETTINGS.user.path_user_toml = (self.path_base / self.SETTINGS.user.file_user_config)
 
   require_config_review = False
 

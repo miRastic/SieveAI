@@ -72,22 +72,24 @@ class Vina(PluginBase):
                   "center_x", "center_y", "center_z",
                   "size_x", "size_y", "size_z",
                   "out", "log",
-                  "cpu", "seed", "verbosity",
+                  "cpu", "verbosity", # "seed",
                   "exhaustiveness", "num_modes", "energy_range"]
 
   def _run_docking(self, cuid):
     """Runs vina command."""
     _cuid_c = self.Complexes[cuid]
     _config = {
-            "--receptor": _cuid_c.path_receptor,
-            "--ligand": _cuid_c.path_ligand,
-            "--config": _cuid_c.path_vina_config,
-            "--out": _cuid_c.path_out,
-            "--verbosity": self.Vina_config.default.get('verbosity', 2),
-            "cwd": _cuid_c.path_docking,
-            ">": _cuid_c.path_log # from command line to file
+            # "--cpu": 1,
+            "--receptor": _cuid_c.path_receptor.resolve(),
+            "--ligand": _cuid_c.path_ligand.resolve(),
+            "--config": _cuid_c.path_vina_config.resolve(),
+            "--out": _cuid_c.path_out.resolve(),
+            # "--verbosity": self.Vina_config.default.get('verbosity', 2),
+            "cwd": _cuid_c.path_docking.resolve(),
+            # ">": _cuid_c.path_log.resolve() # from command line to file
           }
-    self.cmd_run(self.path_vina_exe, **_config)
+    _result = self.cmd_run(self.path_vina_exe, **_config)
+    _cuid_c.path_log.write_text(_result)
 
   def _run_api_docking(self, cuid):
     _vna = VinaPy(sf_name='vina')
@@ -146,15 +148,15 @@ class Vina(PluginBase):
   def _finalise_complex(self, cuid):
     return cuid
 
-  def boot(self, *args, **kwargs):
+  def boot(self, *args, **kwargs) -> None:
     self.update_attributes(self, kwargs)
 
-    self.path_plugin_res = (self.path_base / 'docking' / self.plugin_uid).validate()
-    self.path_pkl_molecules = (self.path_base / 'docking' / self.plugin_uid).with_suffix('.Structures.sob')
-    self.path_pkl_progress = (self.path_base / 'docking' / self.plugin_uid).with_suffix('.config.sob')
-    self.path_excel_results = (self.path_base / self.plugin_uid ).with_suffix('.Results.xlsx')
+    self.path_plugin_res = (self.path_base / 'docking' / self.plugin_uid).validate().rel_path()
+    self.path_pkl_molecules = (self.path_base / 'docking' / self.plugin_uid).with_suffix('.Structures.sob').rel_path()
+    self.path_pkl_progress = (self.path_base / 'docking' / self.plugin_uid).with_suffix('.config.sob').rel_path()
+    self.path_excel_results = (self.path_base / self.plugin_uid ).with_suffix('.Results.xlsx').rel_path()
 
-    self.path_vina_exe = self.which('vina')
+    self.path_vina_exe = 'vina' # self.which('vina')
     self._restore_progress()
 
     self._set_defualt_config()
@@ -162,7 +164,7 @@ class Vina(PluginBase):
     self._steps_map_methods = {
       "init": self._prepare_molecules,
       "config": self._write_receptor_vina_config,
-      # "dock": self._run_docking,
+      "dock": self._run_docking,
       # "dock": self._run_api_docking,
       "extract": self._run_extraction,
       "analyse": self._run_analysis,
@@ -172,18 +174,11 @@ class Vina(PluginBase):
     self._step_sequence = tuple(self._steps_map_methods.keys())
 
     if not self.path_pkl_molecules.exists():
-      self.Receptors = Structures(self.SETTINGS.user.path_receptors, '*.pdb', 'macromolecule')
-      self.Ligands = Structures(self.SETTINGS.user.path_ligands, '*.pdb', 'compound')
+      self.log_debug('Running for the first time.')
+      self.Receptors = Structures(self.SETTINGS.user.path_receptors, ['protein', 'dna', 'rna'])
+      self.Ligands = Structures(self.SETTINGS.user.path_ligands, 'compound')
       self.log_debug('Storing Molecules')
       self._update_progress()
-
-      # Check files have changed by comparing mol_path.hash == mol_hash
-      # If changed re-read the molecule
-      # Validate structure directory hash if anything changed
-      # If changed re-read the molecule(s)
-
-    else:
-      self.log_debug('Restoring Molecules')
 
     if not self.path_pkl_progress.exists():
       self.Complexes = self.ObjDict()
@@ -207,16 +202,13 @@ class Vina(PluginBase):
       self.Complexes[cuid].steps_completed.append(_step)
       self._update_progress()
 
-  _vina_exe = None
   multiprocessing = False
   def _queue_complexes(self) -> None:
     self.log_debug(f"Receptors: {self.Receptors}")
     self.log_debug(f"Ligands: {self.Ligands}")
 
-    self._vina_exe = self.which('vina')
-
-    if not self._vina_exe:
-      self.log_error(f'{self._vina_exe} executable is not found. Please provide the executable command or path to executable file.')
+    if self.path_vina_exe is None:
+      self.log_error(f'{self.path_vina_exe} executable is not found. Please provide the executable command or path to executable file.')
       return
 
     # Perform Docking
@@ -238,8 +230,16 @@ class Vina(PluginBase):
         _c_rec = _complex_path / f'REC.pdbqt'
         _c_lig = _complex_path / f'LIG.pdbqt'
 
-        _rec.mol_path_pdbqt.copy(_c_rec)
-        _lig.mol_path_pdbqt.copy(_c_lig)
+        if not _rec.formats['.pdbqt'].mol_path.exists():
+          self.log_debug(f'{_rec.mol_id} PDBQT does not exist.')
+          continue
+
+        if not _lig.formats['.pdbqt'].mol_path.exists():
+          self.log_debug(f'{_lig.mol_id} PDBQT does not exist.')
+          continue
+
+        _rec.formats['.pdbqt'].mol_path.copy(_c_rec.resolve())
+        _lig.formats['.pdbqt'].mol_path.copy(_c_lig.resolve())
 
         self.Complexes[_complex_uid].update({
             "step": StepManager(self._step_sequence),
@@ -252,6 +252,7 @@ class Vina(PluginBase):
             "path_docking": _complex_path,
             "path_out": _complex_path / f'{_complex_uid}.out.pdbqt',
             "path_log": _complex_path / f'{_complex_uid}.log',
+            "path_vina_config": _complex_path / f"{_complex_uid}.vina.config"
           })
 
         self.log_debug(f'{_complex_uid}:: Queued.')
@@ -292,13 +293,11 @@ class Vina(PluginBase):
       return
 
     _complx = self.Complexes[cuid]
-    self.log_error('cmplx', _complx)
+    _check = ['path_vina_config' in _complx, _complx.path_vina_config.exists()]
 
-    if 'path_vina_config' in _complx and _complx.path_vina_config.exists() and _complx.path_vina_config.size > 0:
+    if all(_check) and _complx.path_vina_config.size > 0:
       self.log_info(f'{cuid} vina config file already exists. Skipping...')
       return
-    else:
-      self.Complexes[cuid].path_vina_config = _complx.path_docking / f"{cuid}.vina.config"
 
     _config_path = self.Complexes[cuid].path_vina_config
 
@@ -353,7 +352,7 @@ class Vina(PluginBase):
 
     _config_path.write(_vina_config_lines)
 
-  def run(self, *args, **kwargs):
+  def run(self, *args, **kwargs) -> None:
     # Setting molecular formats
     _mgltools = PluginManager.share_plugin('mgltools')()
     self.Receptors.set_format('pdbqt', converter=_mgltools.prepare_receptor)
@@ -368,5 +367,5 @@ class Vina(PluginBase):
     # self.process_queue()
     # self.queue_final_callback(self._tabulate_results)
 
-  def shutdown(self, *args, **kwargs):
+  def shutdown(self, *args, **kwargs) -> None:
     ...

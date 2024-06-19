@@ -2,41 +2,21 @@ from .base import MoleculeBase
 
 class Molecule(MoleculeBase):
   def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
     _mol_id = kwargs.get("mol_id", args[0] if len(args) > 0 else 'Unknown-XXX')
-    _mol_path = kwargs.get("mol_path", args[1] if len(args) > 1 else None)
+    _mol_paths = kwargs.get("mol_paths", args[1] if len(args) > 1 else [])
 
-    _defaults = {
-      "mol_id": _mol_id,
-      "mol_path": _mol_path,
-    }
-    _defaults.update(kwargs)
-    super().__init__(*args, **_defaults)
-    self.parse_additional_attributes()
+    self['mol_id'] = _mol_id
 
-  def parse_additional_attributes(self) -> None:
-    _other_attribs = {
-      "mol_ext": self.mol_path.ext,
-      "mol_file_size": self.mol_path.size,
+    _mp = None
+    for _mp in _mol_paths:
+      self.formats[_mp.suffix].mol_path = _mp
+      self.formats[_mp.suffix].mol_hash = _mp.hash
 
-      # "n_models": 0,
-      # "n_molecules": 0,
-      # "n_hetatoms": 0,
-      # "n_residues": 0,
+    # prefer .pdb or set first path as mol_path
+    _ext = '.pdb'
 
-      # "db_sources": [],
+    if not _ext in self.formats:
+      _ext = list(self.formats.keys())[0]
 
-      "is_valid": None,
-      "is_2D": None,
-      "is_3D": None,
-      "is_gz": None,
-      "mol_type": None,
-      "mol_format": None,
-      "mol_hash": self.mol_path.hash,
-    }
-
-    _mol_path = self.mol_path
-
-    if _mol_path.is_gz:
-      _mol_path = _mol_path.with_suffix('') # Remove last suffix
-
-    self.update(_other_attribs)
+    self['mol_path'] = self.formats[_ext].mol_path
